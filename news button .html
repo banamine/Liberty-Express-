@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liberty Express News Button</title>
+    <style>
+        /* Base button styling */
+        .news-button {
+            display: inline-block;
+            padding: 14px 28px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 50px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            color: white;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(45deg, #ff0066, #ff9900, #00ccff, #6600ff);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        /* Gradient animation */
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glow effect on hover */
+        .news-button:hover {
+            animation: gradientShift 4s ease infinite, pulseGlow 1.5s ease infinite;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Pulse glow animation */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+            50% { box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4); }
+            100% { box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+        }
+
+        /* Shine effect */
+        .news-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: all 0.6s ease;
+        }
+
+        .news-button:hover::before {
+            left: 100%;
+        }
+
+        /* Icon styling */
+        .button-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .icon {
+            font-size: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .news-button:hover .icon {
+            transform: rotate(20deg) scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <a href="https://www.liberty-express.org/web-iptv.html" class="news-button" target="_blank">
+        <div class="button-content">
+            <span class="icon">□</span>
+            <span> Playing Now </span>
+        </div>
+    </a>
+</body>
+</html>
