@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>M3U Archive Browser & Downloader</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa7bf;
+      --accent1:#7b61ff;
+      --accent2:#00d1ff;
+      --glass: rgba(255,255,255,0.04);
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+      background: linear-gradient(160deg,var(--bg) 0%, #051022 60%);
+      color:#e6eef8;
+      padding:28px;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    header{
+      display:flex;
+      gap:16px;
+      align-items:center;
+      margin-bottom:14px;
+    }
+    h1{margin:0;font-size:20px;letter-spacing:0.3px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .controls{
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .search{
+      display:flex;
+      gap:8px;
+      background:var(--glass);
+      padding:8px;
+      border-radius:10px;
+      align-items:center;
+      min-width:260px;
+      box-shadow: 0 6px 18px rgba(12,20,30,0.6);
+    }
+    .search input{
+      border:0;background:transparent;outline:0;color:inherit;font-size:14px;
+      width:280px;
+    }
+    .count{
+      margin-left:auto;color:var(--muted);font-size:13px;
+    }
+
+    .grid{
+      margin-top:18px;
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+      gap:14px;
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:14px;
+      box-shadow: 0 8px 20px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      transition:transform .15s ease, box-shadow .15s ease;
+    }
+    .card:hover{ transform: translateY(-6px); box-shadow: 0 18px 36px rgba(3,8,30,0.7); }
+
+    .title-row{
+      display:flex;gap:10px;align-items:baseline;
+    }
+    .meta{
+      color:var(--muted);font-size:12px;margin-left:auto;
+      background:linear-gradient(90deg,var(--accent1),var(--accent2));
+      -webkit-background-clip:text;background-clip:text;
+      color:transparent;
+    }
+
+    .desc{ color:var(--muted); font-size:13px; line-height:1.35; min-height:42px; overflow:hidden; }
+
+    .actions{
+      display:flex;gap:8px;align-items:center;
+      margin-top:4px;
+    }
+    .btn{
+      padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:600;
+      display:inline-flex;gap:8px;align-items:center;font-size:13px;
+      color:#051022;background:linear-gradient(90deg,var(--accent1),var(--accent2));
+      box-shadow: 0 6px 18px rgba(123,97,255,0.12);
+    }
+    .btn.ghost{
+      background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600;
+    }
+    .btn.disabled{
+      cursor:not-allowed;opacity:0.5;
+    }
+    .small{
+      font-size:12px;padding:6px 10px;border-radius:8px;
+      background:rgba(255,255,255,0.02);color:var(--muted);
+    }
+
+    .links-list{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+      color:#cfe7ff;font-size:13px;
+      background: rgba(255,255,255,0.02);
+      padding:10px;border-radius:8px; margin-top:6px;
+      max-height:160px; overflow:auto;
+    }
+
+    footer{ margin-top:22px;color:var(--muted); font-size:13px; }
+
+    @media (max-width:420px){
+      .search input{width:140px}
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>M3U Archive Browser & Downloader</h1>
+      <p class="lead">Configurable "links-per-file" and one-click downloads.</p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="search" title="Search by name or description">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:.7">
+        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+        <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.6"></circle>
+      </svg>
+      <input id="q" placeholder="Search names or descriptions…" />
+      <button id="clear" class="small" title="Clear">Clear</button>
+    </div>
+
+    <label style="display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px">
+      Links per file:
+      <input id="linksPerFile" type="number" min="1" max="200" value="5" style="width:64px;padding:6px;border-radius:8px;border:0;background:rgba(255,255,255,0.02);color:inherit" />
+    </label>
+
+    <div class="count" id="count">20 files</div>
+  </div>
+
+  <main>
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </main>
+
+  <footer>
+    Note: Link display is disabled due to CORS restrictions on fetching .m3u files. Use a server-side proxy or local files to enable link viewing.
+  </footer>
+
+  <script>
+    const urls = [
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/uk_rakuten.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Tv%20Folder.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/My%20Tech%20Music.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/40+.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Quick%20Draw%20McGraw.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/70%20Odd%20Couple.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/I%20Was%20a%20Communist%20for%20the%20FBI.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Top%20Westerns.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Tv%20Westerns%20Part%202.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/BIG%20WESTERN%20ZONE.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/live%20news.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/spoils%20of%20war.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Taxi.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Have%20Gun%20Will%20Travel.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/us_roku.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Aliein%203%20.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Ancient%20Aliens%201-18.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/us_klowdtv.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/aint%20half%20hot.m3u",
+      "https://ia903206.us.archive.org/29/items/1a-3_20240519/Special%20Branch.m3u"
+    ];
+
+    const cache = {
+      metadata: new Map()
+    };
+
+    function filenameFromUrl(u){
+      try{
+        const p = new URL(u).pathname;
+        const segs = p.split('/');
+        const fn = decodeURIComponent(segs[segs.length-1] || '');
+        return fn.trim();
+      }catch(e){
+        return u;
+      }
+    }
+
+    function shortNameFromFilename(fn){
+      return fn.replace(/\.m3u$/i,'').replace(/\+/g,' + ').replace(/%20/g,' ').trim();
+    }
+
+    function itemIdFromUrl(u){
+      try{
+        const p = new URL(u).pathname;
+        const segs = p.split('/').filter(Boolean);
+        const idx = segs.indexOf('items');
+        if(idx >= 0 && segs.length > idx+1) return segs[idx+1];
+        if(segs.length >= 2) return segs[segs.length-2];
+      }catch(e){}
+      return null;
+    }
+
+    async function fetchMetadata(itemId){
+      if(!itemId) return null;
+      if(cache.metadata.has(itemId)) return cache.metadata.get(itemId);
+      const metaUrl = `https://archive.org/metadata/${encodeURIComponent(itemId)}`;
+      try{
+        const res = await fetch(metaUrl);
+        if(!res.ok) throw new Error('metadata fetch failed');
+        const data = await res.json();
+        cache.metadata.set(itemId,data);
+        return data;
+      }catch(err){
+        cache.metadata.set(itemId,null);
+        return null;
+      }
+    }
+
+    async function downloadFile(url, suggestedFilename){
+      try{
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('Network error: ' + res.status);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        const name = suggestedFilename || filenameFromUrl(url) || 'file.m3u';
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(blobUrl), 1000*10);
+      }catch(err){
+        console.warn('Direct fetch/download failed, opening in new tab. Error:', err);
+        window.open(url, '_blank', 'noopener');
+      }
+    }
+
+    const grid = document.getElementById('grid');
+    const qInput = document.getElementById('q');
+    const countEl = document.getElementById('count');
+    const clearBtn = document.getElementById('clear');
+    const linksPerFileInput = document.getElementById('linksPerFile');
+
+    function makeCard(url){
+      const fn = filenameFromUrl(url) || url;
+      const short = shortNameFromFilename(fn);
+      const itemId = itemIdFromUrl(url);
+
+      const card = document.createElement('section');
+      card.className = 'card';
+
+      const titleRow = document.createElement('div'); titleRow.className = 'title-row';
+      const title = document.createElement('div'); title.textContent = short; title.style.fontSize='15px';
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = itemId || '';
+      titleRow.append(title, meta);
+
+      const desc = document.createElement('div'); desc.className='desc';
+      desc.textContent = 'Loading description…';
+
+      const actions = document.createElement('div'); actions.className='actions';
+      const downloadBtn = document.createElement('button'); downloadBtn.className='btn';
+      downloadBtn.textContent = 'Download';
+      const showLinksBtn = document.createElement('button'); showLinksBtn.className='small ghost disabled'; showLinksBtn.disabled = true;
+      showLinksBtn.textContent = 'Show links (disabled)';
+      showLinksBtn.title = 'Link display disabled due to CORS restrictions';
+      actions.append(downloadBtn, showLinksBtn);
+
+      const linksArea = document.createElement('div'); linksArea.className='links-list'; linksArea.style.display='none';
+      linksArea.textContent = 'Link display disabled due to CORS restrictions.';
+
+      downloadBtn.addEventListener('click', async ()=> {
+        downloadBtn.textContent = 'Preparing…';
+        downloadBtn.disabled = true;
+        await downloadFile(url, fn);
+        downloadBtn.textContent = 'Download';
+        downloadBtn.disabled = false;
+      });
+
+      card.append(titleRow, desc, actions, linksArea);
+
+      (async ()=>{
+        const metaJson = await fetchMetadata(itemId);
+        let d = '';
+        if(metaJson && Array.isArray(metaJson.files)){
+          const fnOnly = fn;
+          const fileEntry = metaJson.files.find(f => (f.name || '') === fnOnly || (f.name || '').endsWith(fnOnly));
+          if(fileEntry && (fileEntry.title || fileEntry.source || fileEntry.description)){
+            d = fileEntry.title || fileEntry.description || fileEntry.source || '';
+          }
+        }
+        if(!d && metaJson && metaJson.metadata && (metaJson.metadata.description || metaJson.metadata.title)){
+          d = metaJson.metadata.description || metaJson.metadata.title || '';
+        }
+        if(!d){
+          d = 'No item description available.';
+        }
+        desc.textContent = d.length > 420 ? d.slice(0,420)+'…' : d;
+      })();
+
+      return card;
+    }
+
+    function render(list){
+      grid.innerHTML = '';
+      for(const url of list){
+        const c = makeCard(url);
+        grid.appendChild(c);
+      }
+      countEl.textContent = `${list.length} files`;
+    }
+
+    function filter(q){
+      const term = (q||'').toLowerCase().trim();
+      if(!term) return urls.slice();
+      const filtered = urls.filter(u=>{
+        const fn = shortNameFromFilename(filenameFromUrl(u)).toLowerCase();
+        return fn.includes(term);
+      });
+      return filtered;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+    }
+
+    qInput.addEventListener('input', ()=> {
+      const q = qInput.value;
+      const list = filter(q);
+      render(list);
+    });
+    clearBtn.addEventListener('click', ()=> {
+      qInput.value = '';
+      render(urls);
+    });
+    linksPerFileInput.addEventListener('change', ()=> {});
+
+    render(urls);
+
+    (async ()=>{
+      const itemIds = new Set(urls.map(itemIdFromUrl).filter(Boolean));
+      for(const id of itemIds) fetchMetadata(id);
+    })();
+  </script>
+</body>
+</html>
