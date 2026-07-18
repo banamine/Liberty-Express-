@@ -1,90 +1,2252 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScheduleFlow - Professional Playout Scheduler</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="IPTV Player powered by Liberty">
+    <meta name="theme-color" content="#1e90ff">
+    <title>Web IPTV Player | Watch your Favorites TV channels!</title>
+    <base href="./">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="https://png.pngtree.com/png-vector/20240827/ourlarge/pngtree-vintage-old-television-isolated-on-transparent-background-png-image_13645075.png">
+    <link rel="shortcut icon" href="https://png.pngtree.com/png-vector/20240827/ourlarge/pngtree-vintage-old-television-isolated-on-transparent-background-png-image_13645075.png">
+    <link rel="apple-touch-icon" href="https://png.pngtree.com/png-vector/20240827/ourlarge/pngtree-vintage-old-television-isolated-on-transparent-background-png-image_13645075.png">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@4.7.2/dist/dash.all.min.js">
+    </script>
+    <style>
+        :root {
+            --primary: #1e90ff;
+            --secondary: #ff2970;
+            --accent: #00ffcc;
+            --background: #121212;
+            --surface: #181c24;
+            --text: #e0e0e0;
+            --text-light: #f5f6fa;
+            --border: #232730;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --radius: 14px;
+            --shadow: 0 4px 40px 0 rgba(0, 0, 0, 0.11);
+            --glow: 0 0 10px currentColor;
+            --transition: all 0.3s ease;
+        }
+
+        body.light {
+            --background: #f7f9fa;
+            --surface: #f9fafb;
+            --text: #222;
+            --text-light: #232323;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+            transition: var(--transition);
+            overflow: auto;
+            min-height: 100vh;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        #player {
+            width: 100%;
+            height: 60vh;
+            max-height: 80vh;
+            object-fit: cover;
+            position: relative;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            background: #000;
+        }
+
+        .player-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .container:hover .player-controls {
+            opacity: 1;
+        }
+
+        .control-btn {
+            background: rgba(32, 32, 48, 0.85);
+            color: var(--text-light);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .control-btn:hover {
+            background: rgba(37, 99, 235, 0.8);
+            box-shadow: var(--glow);
+        }
+
+        .fullscreen-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 340px;
+            height: 100vh;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius) 0 0 var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 22;
+            border-left: 1.5px solid var(--border);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(110%);
+            box-shadow: none;
+        }
+
+        .sidebar-content {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-footer {
+            flex-shrink: 0;
+            background: transparent;
+            width: 100%;
+            font-size: 0.92rem;
+            text-align: center;
+            color: var(--text);
+            border-top: 1px solid var(--border);
+            padding: 10px 0;
+        }
+
+        .sidebar-toggle,
+        .theme-toggle-btn {
+            position: fixed;
+            top: 6px;
+            z-index: 41;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 50%;
+            font-size: 1.25rem;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .theme-toggle-btn {
+            right: 78px;
+        }
+        .sidebar-toggle {
+            right: 24px;
+        }
+
+        .sidebar-toggle:hover,
+        .theme-toggle-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: var(--glow);
+        }
+
+        .localtime-bar {
+            position: fixed;
+            top: 10px;
+            left: 18px;
+            z-index: 100;
+            background: rgba(25, 28, 36, 0.90);
+            color: var(--text-light);
+            font-size: 1.03rem;
+            font-family: inherit;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            padding: 5px 14px 4px 14px;
+            border-radius: 23px;
+            box-shadow: 0 1px 7px 0 rgba(0, 0, 0, 0.10);
+            user-select: none;
+            min-width: 120px;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        body.light .localtime-bar {
+            background: #e5e7eb;
+            color: #222;
+        }
+
+        .upload-panel,
+        .search-panel {
+            padding: 13px 18px 0 18px;
+            background: transparent;
+        }
+
+        .upload-panel h3 {
+            font-size: 1.08rem;
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .upload-panel input[type="file"] {
+            width: 90%;
+            padding: 10px 13px;
+            margin: 6px 0px 6px 0px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .url-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #urlInput {
+            flex: 1 1 0px;
+            padding: 10px 13px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        #loadUrl {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0;
+            margin-left: 4px;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        #loadUrl:hover {
+            background: #1e40af;
+            box-shadow: var(--glow);
+        }
+
+        .search-panel input[type="text"] {
+            width: 90%;
+            padding: 10px 13px;
+            margin-bottom: 4px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1.5px solid var(--border);
+            margin: 5px 0 0 0;
+            padding: 0 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 0 7px 0;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1.08rem;
+            font-weight: 500;
+            color: #b3b6c9;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            background: var(--surface);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .tab:hover:not(.active) {
+            background: var(--border);
+            color: var(--text-light);
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1 1 auto;
+            flex-direction: column;
+            min-height: 0;
+            padding: 0 7px;
+            height: 0;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: none;
+        }
+
+        .channel-list,
+        .history-list,
+        .favorites-list {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            min-height: 44px;
+            max-height: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .pagination button {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .pagination button:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .channel-item,
+        .favorite-item,
+        .history-item {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 4px;
+            background: var(--surface);
+            color: var(--text-light);
+            border: none;
+            border-radius: 8px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            font-size: 1.01rem;
+            box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06);
+            letter-spacing: 0.01em;
+            transition: var(--transition);
+        }
+
+        .channel-item:hover,
+        .favorite-item:hover,
+        .history-item:hover {
+            background: var(--border);
+            color: var(--text-light);
+            box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.10);
+        }
+
+        .channel-item img,
+        .favorite-item img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            border-radius: 7px;
+            background: var(--text-light);
+        }
+
+        .default-logo {
+            background: #f2f2f2;
+        }
+
+        .channel-item .favorite-btn,
+        .favorite-item .favorite-btn {
+            margin-left: auto;
+            cursor: pointer;
+            z-index: 2;
+            transition: var(--transition);
+        }
+
+        .playlist-current {
+            border: 2px solid var(--primary) !important;
+            background: #1e293b !important;
+            color: #fff !important;
+            box-shadow: 0 3px 20px 0 rgba(37, 99, 235, 0.13);
+        }
+
+        .playlist-favorite {
+            background: #202c2b !important;
+            color: var(--secondary) !important;
+        }
+
+        .playlist-current .favorite-btn,
+        .playlist-favorite .favorite-btn {
+            color: var(--secondary) !important;
+        }
+
+        .playlist-current.playlist-favorite {
+            background: linear-gradient(90deg, var(--primary) 60%, var(--secondary) 100%) !important;
+            color: #fff !important;
+        }
+
+        .history-item .history-label {
+            flex: 1 1 0px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+        }
+
+        .history-item .action-btn,
+        .history-item .delete-btn {
+            margin-left: 7px;
+            cursor: pointer;
+            z-index: 2;
+            opacity: 0.85;
+            transition: opacity 0.15s;
+        }
+
+        .history-item .action-btn:hover,
+        .history-item .delete-btn:hover {
+            opacity: 1;
+        }
+
+        .analysis-panel {
+            text-align: center;
+            margin: 0 0 8px 0;
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .analysis-panel h3 {
+            font-size: 1.10rem;
+            font-weight: 600;
+            margin: 10px 0 7px 0;
+            color: var(--primary);
+        }
+
+        .analysis-panel .analysis-buttons {
+            margin: 9px 0 3px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .analysis-panel .analysis-buttons button {
+            background: var(--surface);
+            color: var(--text);
+            border: none;
+            border-radius: 7px;
+            padding: 6px 16px;
+            font-size: 0.98rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .analysis-panel .analysis-buttons button.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .analysis-panel .analysis-buttons button#showTotal {
+            background: var(--primary);
+        }
+        .analysis-panel .analysis-buttons button#showOnline {
+            background: var(--success);
+        }
+        .analysis-panel .analysis-buttons button#showOffline {
+            background: var(--danger);
+        }
+
+        .manual-check-btn {
+            background: var(--surface);
+            color: var(--primary);
+            border: none;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.28rem;
+            box-shadow: 0 1px 6px 0 rgba(0, 0, 0, 0.06);
+            margin-left: 8px;
+            vertical-align: middle;
+            transition: var(--transition);
+        }
+
+        .manual-check-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: var(--glow);
+        }
+
+        .analysis-panel .analysis-status-summary {
+            margin: 10px 0 0 0;
+            font-size: 1.07em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .analysis-panel canvas {
+            max-width: 100%;
+            margin: 8px auto 0 auto;
+        }
+
+        .player-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(32, 32, 48, 0.95);
+            color: #fff;
+            font-size: 1.18rem;
+            font-weight: 500;
+            border-radius: 14px;
+            padding: 22px 36px 22px 36px;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.23);
+            min-width: 220px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .player-notification.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .player-notification .spinner {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .popup-menu {
+            position: absolute;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            min-width: 150px;
+            padding: 5px 0;
+        }
+
+        .popup-menu button {
+            background: none;
+            border: none;
+            padding: 8px 15px;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .popup-menu button:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .context-menu {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 5px 0;
+        }
+
+        .context-menu button {
+            display: block;
+            width: 100%;
+            padding: 8px 15px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .context-menu button:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .history-list-bar {
+            display: flex;
+            justify-content: center;
+            padding: 8px 0;
+        }
+
+        .history-list-bar button {
+            background: var(--danger);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 16px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .history-list-bar button:hover {
+            opacity: 0.85;
+        }
+
+        .text-red {
+            color: var(--secondary);
+        }
+
+        .playlist-bar {
+            width: 100%;
+            text-align: center;
+            font-weight: 600;
+            padding: 8px 0;
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+            border-bottom: 1.5px solid #2563eb;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 96vw;
+                max-width: 370px;
+                border-radius: var(--radius) 0 0 var(--radius);
+            }
+            .sidebar-footer {
+                width: 100vw;
+                max-width: 370px;
+            }
+            .sidebar-toggle,
+            .theme-toggle-btn {
+                right: 0;
+            }
+            #player {
+                height: 45vh;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .sidebar {
+                width: 100vw;
+                max-width: 100vw;
+                border-radius: 0;
+            }
+            .sidebar-footer {
+                width: 100vw;
+                max-width: 100vw;
+                border-radius: 0;
+            }
+            .sidebar-toggle,
+            .theme-toggle-btn {
+                right: 0;
+            }
+            #player {
+                height: 38vh;
+            }
+        }
+    </style>
 </head>
-<body class="theme-black">
-    <nav class="navbar">
-        <div class="nav-container">
-            <h1 class="logo">⚡ ScheduleFlow</h1>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link active">Hub</a>
-                <a href="scheduler.html" class="nav-link">Scheduler</a>
-                <a href="demo.html" class="nav-link">Demo</a>
-                <a href="calendar.html" class="nav-link">Calendar</a>
-                <a href="export.html" class="nav-link">Export</a>
-            </div>
+<body>
+
+    <div class="container">
+
+        <!-- Time bar -->
+        <div class="localtime-bar" id="localTime"></div>
+
+        <!-- Video player -->
+        <video id="player" controls autoplay playsinline muted poster="https://www.liberty-express.org/uploads/1/4/4/3/144388675/liberty-desk-2_orig.jpg"></video>
+
+        <!-- Player overlay controls -->
+        <div class="player-controls">
+            <button class="control-btn" id="prevChannel" title="Previous Channel"><i class="fas fa-backward"></i></button>
+            <button class="control-btn" id="playPause" title="Play/Pause"><i class="fas fa-play"></i></button>
+            <button class="control-btn" id="nextChannel" title="Next Channel"><i class="fas fa-forward"></i></button>
+            <button class="control-btn" id="volumeUp" title="Volume Up"><i class="fas fa-volume-up"></i></button>
+            <button class="control-btn" id="volumeDown" title="Volume Down"><i class="fas fa-volume-down"></i></button>
         </div>
-    </nav>
 
-    <main class="container">
-        <section class="hero">
-            <h1>ScheduleFlow</h1>
-            <p>Professional-Grade Playout Scheduler for 24/7 Broadcasting</p>
-        </section>
+        <!-- Fullscreen button -->
+        <button class="control-btn fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fas fa-expand"></i></button>
 
-        <section class="modules">
-            <div class="module-grid">
-                <div class="module-card">
-                    <h3>📋 M3U Scheduler</h3>
-                    <p>Import M3U playlists, detect series patterns, schedule with conflict detection.</p>
-                    <a href="scheduler.html" class="btn-primary">Open Scheduler</a>
+        <!-- Theme & Sidebar toggles -->
+        <button id="toggleTheme" class="theme-toggle-btn" title="Toggle theme"><i class="fas fa-moon"></i></button>
+        <button id="toggleSidebar" class="sidebar-toggle" title="Toggle sidebar"><i class="fas fa-bars"></i></button>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+
+                <!-- Upload panel -->
+                <div class="upload-panel">
+                    <h3>Upload Playlist or URL</h3>
+                    <input type="file" id="fileInput" accept=".m3u,.json,.txt">
+                    <div class="url-row">
+                        <input type="text" id="urlInput" placeholder="Enter stream URL">
+                        <button id="loadUrl" title="Load Stream"><i class="fas fa-play"></i></button>
+                    </div>
                 </div>
 
-                <div class="module-card">
-                    <h3>▶️ Demo Player</h3>
-                    <p>Auto-rotating demo with embedded clips, no setup required.</p>
-                    <a href="demo.html" class="btn-primary">Play Demo</a>
+                <!-- Search panel -->
+                <div class="search-panel">
+                    <input type="text" id="searchInput" placeholder="Search channels...">
                 </div>
 
-                <div class="module-card">
-                    <h3>📅 Calendar View</h3>
-                    <p>4-week schedule visualization with color-coded shows.</p>
-                    <a href="calendar.html" class="btn-primary">View Calendar</a>
+                <!-- Tabs -->
+                <div class="tabs">
+                    <div class="tab active" data-tab="channels"><i class="fas fa-tv"></i></div>
+                    <div class="tab" data-tab="history"><i class="fas fa-clock"></i></div>
+                    <div class="tab" data-tab="favorites"><i class="fas fa-heart"></i></div>
+                    <div class="tab" data-tab="analysis"><i class="fas fa-chart-bar"></i></div>
                 </div>
 
-                <div class="module-card">
-                    <h3>💾 Export Tools</h3>
-                    <p>Export to CasparCG, OBS, M3U, JSON, and more.</p>
-                    <a href="export.html" class="btn-primary">Export</a>
-<<<<<<< HEAD
+                <!-- Channels tab -->
+                <div class="tab-content active" id="channels-tab">
+                    <div class="playlist-bar" id="playlistBar">Playlist: Default Playlist</div>
+                    <div class="channel-list" id="channelList"></div>
+                    <div class="pagination" id="channelPagination">
+                        <button id="prevPage"><i class="fas fa-chevron-left"></i></button>
+                        <span id="pageInfo">Page 1 of 1</span>
+                        <button id="nextPage"><i class="fas fa-chevron-right"></i></button>
+                    </div>
                 </div>
 
-                <div class="module-card">
-                    <h3>📻 Radio Station</h3>
-                    <p>24/7 internet radio with music scheduling and auto-rotation.</p>
-                    <a href="radio.html" class="btn-primary">Launch Radio</a>
+                <!-- History tab -->
+                <div class="tab-content" id="history-tab">
+                    <div class="history-list" id="historyList"></div>
                 </div>
 
-                <div class="module-card">
-                    <h3>🧪 Test Dashboard</h3>
-                    <p>Automated testing suite with 30+ test cases covering all features.</p>
-                    <a href="test.html" class="btn-primary">Run Tests</a>
-=======
->>>>>>> 1a45e5f4554c44fc0223c1b77be694ab7eabb3b2
+                <!-- Favorites tab -->
+                <div class="tab-content" id="favorites-tab">
+                    <div class="favorites-list" id="favoritesList"></div>
+                    <div class="pagination" id="favoritesPagination">
+                        <button id="prevFavPage"><i class="fas fa-chevron-left"></i></button>
+                        <span id="favPageInfo">Page 1 of 1</span>
+                        <button id="nextFavPage"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Analysis tab -->
+                <div class="tab-content" id="analysis-tab">
+                    <div class="analysis-panel">
+                        <h3>Playlist Analysis
+                            <button id="manualCheckBtn" class="manual-check-btn" title="Manual check"><i class="fas fa-check-circle"></i></button>
+                        </h3>
+                        <div class="analysis-buttons">
+                            <button id="showTotal" class="tab-analysis-btn active">Total</button>
+                            <button id="showOnline" class="tab-analysis-btn">Online</button>
+                            <button id="showOffline" class="tab-analysis-btn">Offline</button>
+                        </div>
+                        <div class="analysis-status-summary" id="analysisStatusSummary">
+                            <span id="analysisText">Total: 0 | Online: 0 | Offline: 0</span>
+                        </div>
+                        <canvas id="analysisChart" width="200" height="200"></canvas>
+                    </div>
                 </div>
             </div>
-        </section>
 
-        <section class="info">
-            <h2>Quick Start</h2>
-            <ol>
-                <li>Go to <strong>Scheduler</strong> and import your M3U playlist</li>
-                <li>Use <strong>Auto-Schedule</strong> to fill your 24-hour grid intelligently</li>
-                <li>View results in <strong>Calendar</strong> to see the full week</li>
-                <li><strong>Export</strong> to your playout engine (CasparCG, OBS, etc.)</li>
-            </ol>
-            <p class="highlight">All data is stored locally in your browser. No server needed.</p>
-        </section>
-    </main>
+            <!-- Footer -->
+            <div class="sidebar-footer" id="sidebarFooter"></div>
+        </div>
 
-    <footer>
-        <p>&copy; 2025 ScheduleFlow. GitHub Pages Deployment Ready.</p>
-    </footer>
+        <!-- Context menu -->
+        <div class="context-menu" id="contextMenu">
+            <button id="contextPlay">Play Channel</button>
+            <button id="contextFavorite">Add to Favorites</button>
+            <button id="contextInfo">Channel Info</button>
+        </div>
 
-    <script src="assets/js/app.js"></script>
+        <!-- Notification overlay (created dynamically) -->
+    </div>
+
+    <script>
+        /* ============================================================
+           PROJECT RESILIENCE — Full Rebuild
+           Fixes: HLS lifecycle, XSS, health checks, scroll, fullscreen sync
+           ============================================================ */
+
+        // ─── CONSTANTS ────────────────────────────────────────────────
+        const DEFAULT_PLAYLIST = `#EXTM3U
+        #EXTINF:-1,Amagi Channel 1
+        https://amg01117-amg01117c1-amgplt0165.playout.now3.amagi.tv/playlist.m3u8
+        #EXTINF:-1,21 Jump Street
+        https://cb562753.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1XzIxSnVtcFN0cmVldF9ITFM/playlist.m3u8
+        #EXTINF:-1,Autentic Adventure Earth
+        https://autentic-adventure-earth-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Ax Men
+        https://36dc2f37.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX0F4TWVuX0hMUw/playlist.m3u8
+        #EXTINF:-1,Baby Shark TV
+        https://newidco-babysharktv-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Rakuten US Channel
+        https://amg00145-amg00145c2-rakuten-us-5323.playouts.now.amagi.tv/playlist.m3u8
+        #EXTINF:-1,COPS
+        https://langleyproductions-cops-2-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Magellan Space Science
+        https://amg00376-magellan-amg00376c14-rakuten-uk-1694.playouts.now.amagi.tv/playlist/amg00376-magellantv-spacesciencenowcauk-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Crime Beat
+        https://8e6c868c.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X0NyaW1lQmVhdF9ITFM/playlist.m3u8
+        #EXTINF:-1,CuriosityStream
+        https://amg00170-curiositystream-amg00170c3-rakuten-us-2289.playouts.now.amagi.tv/playlist/amg00170-curiositystreamllcfast-curiositynowrow-rakutenus/playlist.m3u8
+        #EXTINF:-1,Deal Masters
+        https://amg00841-amg00841c8-rakuten-uk-2819.playouts.now.amagi.tv/playlist/amg00841-aeemeafast-dealmastersrakuten-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Deal or No Deal
+        https://deal-or-no-deal-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Rakuten US Channel 2
+        https://amg00857-amg00857c1-rakuten-us-4656.playouts.now.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Dog the Bounty Hunter
+        https://amg00276-amg00276c11-rakuten-uk-3446.playouts.now.amagi.tv/playlist/amg00276-aetelevisionnetworksfast-dogthebountyhunterall-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Earth Touch
+        https://earthtouch-earthtouch-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Fashion TV
+        https://fashiontv-fashiontv-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Filmzie
+        https://filmzie-filmzie-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Flipping Nation
+        https://a64543d5.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX0ZsaXBwaW5nTmF0aW9uX0hMUw/playlist.m3u8
+        #EXTINF:-1,GB News
+        https://rakutenaa-lightning-gbnews-rakuten-ccoa9.amagi.tv/playlist/rakutenAA-lightning-gbnews-rakuten/playlist.m3u8
+        #EXTINF:-1,Great Mystery
+        https://7d963f6f.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX0dyZWF0TXlzdGVyeV9ITFM/playlist.m3u8
+        #EXTINF:-1,Great British Menu
+        https://all3media-great-british-menu-1-gb.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Gusto TV
+        https://563f72af.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X0d1c3RvVFZfSExT/playlist.m3u8
+        #EXTINF:-1,Hell's Kitchen
+        https://itv-hellskitchen-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,History Hunters
+        https://amg00841-amg00841c7-rakuten-uk-2820.playouts.now.amagi.tv/playlist/amg00841-aeemeafast-historyhuntersrakuten-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Hoarders
+        https://8f2546fe.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X0hvYXJkZXJzX0hMUw/playlist.m3u8
+        #EXTINF:-1,Homeful
+        https://amg00090-amg00090c4-rakuten-uk-2806.playouts.now.amagi.tv/playlist/amg00090-blueantfast-homefulworldwide-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Homes Under the Hammer
+        https://all3media-homes-under-the-hammer-1-gb.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Ice Road Truckers
+        https://6ffa57ba.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX0ljZVJvYWRUcnVja2Vyc19ITFM/playlist.m3u8
+        #EXTINF:-1,Inside Crime
+        https://aenetworks-insidecrime-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,I Survived
+        https://8e979536.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX0lTdXJ2aXZlZF9ITFM/playlist.m3u8
+        #EXTINF:-1,Jail
+        https://langleyproductions-jail-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Just for Laughs TV
+        https://distributionsjustepourrire-justforlaughstv-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,LOL Network
+        https://lol-lolnetwork-2-gb.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Love Pets
+        https://rakutenaa-blueskyent-lovepetsemea-rakuten-ikc4q.amagi.tv/playlist/rakutenaa-blueskyent-lovepetsemea-rakuten/playlist.m3u8
+        #EXTINF:-1,MAVTV
+        https://amg00378-mavtv-amg00378c2-rakuten-us-1048.playouts.now.amagi.tv/playlist/amg00378-mavtvfast-motorsportsnetwork-rakutenus/playlist.m3u8
+        #EXTINF:-1,Mech Plus
+        https://mechtvltd-mechplus-1-gb.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Mr. Bean
+        https://amg00627-amg00627c28-rakuten-uk-3984.playouts.now.amagi.tv/playlist/amg00627-banijayfast-mrbeanukcc-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Mystery TV
+        https://aenetworks-mysterytv-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,My Time UK
+        https://appletree-mytimeuk-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,MyZen
+        https://rakutenaa-myzen-en-rakuten-5sex7.amagi.tv/playlist/rakutenaa-myzen-en-rakuten/playlist.m3u8
+        #EXTINF:-1,New Movies
+        https://ec3b4b7e.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X05FV0tNT1ZJRVNfSExT/playlist.m3u8
+        #EXTINF:-1,Now 70s
+        https://lightning-now70s-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Now 80s
+        https://lightning-now80s-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Now 90s
+        https://lightning-now90s-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,NTDTV
+        https://amg17596-ntdtv-amg17596c1-rakuten-gb-6741.playouts.now.amagi.tv/playlist/amg17596-newtangdynastytelevision-ntdtv-rakutengb/playlist.m3u8
+        #EXTINF:-1,Pop Kids
+        https://narrative-popkids-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Popflix
+        https://signatureentertainment-popflix-1-gb.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Sci-Fi Rakuten
+        https://sci-fi-rakuten-tv-uk.fast.rakuten.tv/v1/master/0547f18649bd788bec7b67b746e47670f558b6b2/production-LiveChannel-6241/master.m3u8
+        #EXTINF:-1,Thriller Rakuten
+        https://thriller-rakuten-tv-uk.fast.rakuten.tv/v1/master/0547f18649bd788bec7b67b746e47670f558b6b2/production-LiveChannel-6482/master.m3u8
+        #EXTINF:-1,Real Crime Beta
+        https://lds-realcrimebeta-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Real Wild
+        https://lds-realwild-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Red Bull TV
+        https://e7c8f7d5.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX1JlZEJ1bGxUVi0xX0hMUw/playlist.m3u8
+        #EXTINF:-1,Revry News
+        https://dcb264a4.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X1JldnJ5TmV3c19ITFM/playlist.m3u8
+        #EXTINF:-1,RomCom Drama
+        https://7488d45c.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X1JvbUNvbUtEcmFtYV9ITFM/playlist.m3u8
+        #EXTINF:-1,Western Mania
+        https://stormcast-cinema-llc-westernmaniafast-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,SCL Channel
+        https://rightsboosterltd-scl-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Tastemade
+        https://tastemade-tdint-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Tastemade International
+        https://rakutenaa-tm-intl-aus-rakuten-eu-n1gtg.amagi.tv/playlist/rakutenaa-tm-intl-aus-rakuten-eu/playlist.m3u8
+        #EXTINF:-1,Tennis Channel
+        https://tennischannelintl-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Timeline
+        https://lds-timeline-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Tiny House Nation
+        https://7e5c93fc.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX1RpbnlIb3VzZU5hdGlvbl9ITFM/playlist.m3u8
+        #EXTINF:-1,Travelxp
+        https://travelxp-travelxp-1-eu.rakuten.wurl.tv/playlist.m3u8
+        #EXTINF:-1,Magellan True Crime
+        https://amg00376-magellan-amg00376c9-rakuten-uk-1941.playouts.now.amagi.tv/playlist/amg00376-magellantv-truecrimenowcauk-rakutenuk/playlist.m3u8
+        #EXTINF:-1,True Lives
+        https://amg00654-itv-amg00654c7-rakuten-uk-1282.playouts.now.amagi.tv/playlist/amg00654-itvstudiosfast-truelives-rakutenuk/playlist.m3u8
+        #EXTINF:-1,Waterbear
+        https://waterbear-waterbear-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,World War TV
+        https://aenetworks-worldwartv-rakuten.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Yu-Gi-Oh!
+        https://amg01796-amg01796c19-rakuten-gb-7486.playouts.now.amagi.tv/playlist/amg01796-fastmediafast-yugioh2en-rakutengb/playlist.m3u8
+        #EXTINF:-1,Action Hollywood
+        https://actionhollywood-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Always Funny
+        https://a-cdn.klowdtv.com/live3/alwaysfunny_720p/playlist.m3u8
+        #EXTINF:-1,ZMG Wild
+        https://amg00442-zmg-amg00442c2-klowdtv-us-2123.playouts.now.amagi.tv/playlist/amg00442-zazoommediagroup-zmgwild-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Aspire TV Life
+        https://uptv-aspiretvlife-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,AWE
+        https://a-cdn.klowdtv.com/live1/awe_720p/playlist.m3u8
+        #EXTINF:-1,beIN Sports
+        https://bein-esp-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Beond TV
+        https://amg01681-beondtv-amg01681c1-klowdtv-us-1826.playouts.now.amagi.tv/playlist/amg01681-beondtv-beondtv-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Brat TV
+        https://amg00350-amg00350c1-klowdtv-us-2536.playouts.now.amagi.tv/playlist/amg00350-bratstudiofast-brat-klowdtvus/playlist.m3u8
+        #EXTINF:-1,CMC
+        https://cmc-kowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Cine en Español
+        https://amg02724-somos-amg02724c1-klowdtv-us-2002.playouts.now.amagi.tv/playlist/amg02724-somosfast-cineenespanol-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Cine
+        https://a-cdn.klowdtv.com/live1/cine_720p/playlist.m3u8
+        #EXTINF:-1,Circle
+        https://circle-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Diya TV
+        https://a-cdn.klowdtv.com/live2/diyatv_720p/playlist.m3u8
+        #EXTINF:-1,Euronews
+        https://a-cdn.klowdtv.com/live3/euronews_720p/playlist.m3u8
+        #EXTINF:-1,France 24
+        https://a-cdn.klowdtv.com/live2/france24_720p/playlist.m3u8
+        #EXTINF:-1,France 24 Spanish
+        https://a-cdn.klowdtv.com/live2/france24sp_720p/playlist.m3u8
+        #EXTINF:-1,Fun Roads
+        https://a-cdn.klowdtv.com/live3/funroads_720p/playlist.m3u8
+        #EXTINF:-1,GSN
+        https://a-cdn.klowdtv.com/live2/gsn_720p/playlist.m3u8
+        #EXTINF:-1,Fantasy
+        https://a-cdn.klowdtv.com/live2/fntsy_720p/playlist.m3u8
+        #EXTINF:-1,GB News KlowdTV
+        https://amg01076-lightning-amg01076c7-klowdtv-us-2128.playouts.now.amagi.tv/playlist/amg01076-lightning-gbnews-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Go Traveler
+        https://amg09501-amg09501c1-klowdtv-us-2398.playouts.now.amagi.tv/playlist/amg09501-quester-gotraveler-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Horror Machine
+        https://naviofrequency-horrormachine-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,HSN
+        https://a-cdn.klowdtv.com/live2/hsn_720p/playlist.m3u8
+        #EXTINF:-1,Hunt Channel
+        https://a-cdn.klowdtv.com/live2/huntchannel_720p/playlist.m3u8
+        #EXTINF:-1,In Touch Plus
+        https://amg01540-apexmedia-amg01540c2-klowdtv-us-1989.playouts.now.amagi.tv/playlist/amg01540-apexmediafast-intouchplus-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Infowars
+        https://a-cdn.klowdtv.com/live2/infowars_720p/playlist.m3u8
+        #EXTINF:-1,JLTV
+        https://cdn.herringnetwork.com/80A4DFF/n1.herringnetwork.com/live3/jltv_720p/playlist.m3u8
+        #EXTINF:-1,LATV
+        https://amg00779-latv-amg00779c1-klowdtv-us-2135.playouts.now.amagi.tv/playlist/amg00779-latvnetworkllc-latv-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Law
+        https://a-cdn.klowdtv.com/live3/law_720p/playlist.m3u8
+        #EXTINF:-1,Legend Films
+        https://a-cdn.klowdtv.com/live3/legendfilms_720p/playlist.m3u8
+        #EXTINF:-1,LifeMinute TV
+        https://amg01468-lifeminutetv-lifeminute-klowdtv-r4hhz.amagi.tv/playlist/amg01468-lifeminutetv-lifeminute-klowdtv/playlist.m3u8
+        #EXTINF:-1,BAMUS
+        https://bamus-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Sightline
+        https://naviofrequency-sightline-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Nautical
+        https://a-cdn.klowdtv.com/live2/nautical_720p/playlist.m3u8
+        #EXTINF:-1,Newsmax
+        https://newsmax-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,OAN
+        https://a-cdn.klowdtv.com/live1/oan_720p/playlist.m3u8
+        #EXTINF:-1,Pursuit Up
+        https://pursuitup-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Quietude 4K
+        https://naviofrequency-quietude4k-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,QVC Live
+        https://a-cdn.klowdtv.com/live2/qvclive_720p/playlist.m3u8
+        #EXTINF:-1,The First
+        https://a-cdn.klowdtv.com/live2/thefirst_720p/playlist.m3u8
+        #EXTINF:-1,Right Now TV
+        https://a-cdn.klowdtv.com/live2/rightnowtv_720p/playlist.m3u8
+        #EXTINF:-1,Salem News
+        https://amg00732-salemmediagroup-salemnews-klowdtv-79zyj.amagi.tv/playlist/amg00732-salemmediagroup-salemnews-klowdtv/playlist.m3u8
+        #EXTINF:-1,Smart Healthy Green Living
+        https://amg16109-shgliving-amg16109c1-klowdtv-us-2235.playouts.now.amagi.tv/playlist/amg16109-shglivingnetwork-smarthealthygreenliving-klowdtvus/playlist.m3u8
+        #EXTINF:-1,SportsGrid
+        https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Stash TV Black Stories
+        https://amg01720-amg01720c1-klowdtv-us-4664.playouts.now.amagi.tv/playlist/amg01720-filmhub-stashtvblackstories-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Stash TV Crime Time
+        https://amg01720-amg01720c3-klowdtv-us-4665.playouts.now.amagi.tv/playlist/amg01720-filmhub-stashtvcrimetime-klowdtvus/playlist.m3u8
+        #EXTINF:-1,Stash TV The Classics
+        https://amg01720-amg01720c2-klowdtv-us-4689.playouts.now.amagi.tv/playlist/amg01720-filmhub-stashtvtheclassics-klowdtvus/playlist.m3u8
+        #EXTINF:-1,TCT
+        https://cdn.herringnetwork.com/80A4DFF/n1.herringnetwork.com/live2/tct_720p/playlist.m3u8
+        #EXTINF:-1,Country TV
+        https://a-cdn.klowdtv.com/live2/countrytv_720p/playlist.m3u8
+        #EXTINF:-1,TNA
+        https://a-cdn.klowdtv.com/live2/tna_720p/playlist.m3u8
+        #EXTINF:-1,Trace Latina
+        https://amg01131-tracetv-tracelatina-klowdtv-v10em.amagi.tv/playlist/amg01131-tracetv-tracelatina-klowdtv/playlist.m3u8
+        #EXTINF:-1,Trace Sport Stars
+        https://tracesportstars-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Trace Urban
+        https://amg01131-tracetv-traceurban-klowdtv-utiqd.amagi.tv/playlist/amg01131-tracetv-traceurban-klowdtv/playlist.m3u8
+        #EXTINF:-1,Washington Post
+        https://amg01655-thewashingtonpo-washingtonpost-klowdtv-fxhac.amagi.tv/playlist/amg01655-thewashingtonpo-washingtonpost-klowdtv/playlist.m3u8
+        #EXTINF:-1,WION
+        https://wion-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,Wire2Fish
+        https://wire2fish-klowdtv.amagi.tv/playlist.m3u8
+        #EXTINF:-1,World Poker Tour
+        https://amg00218-wptenterprisesi-worldpokertour-klowdtv-5619e.amagi.tv/playlist/amg00218-wptenterprisesi-worldpokertour-klowdtv/playlist.m3u8`;
+
+        const PLAYER_POSTER = "https://www.liberty-express.org/uploads/1/4/4/3/144388675/liberty-desk-2_orig.jpg";
+        const DEFAULT_LOGO = "https://www.liberty-express.org/uploads/1/4/4/3/144388675/published/xephula-03e8ca0b2a73247200891fbc5cf0796d-cropped.png?1696905236";
+        const CHANNELS_PER_PAGE = 10;
+
+        // ─── STATE ─────────────────────────────────────────────────────
+        let allChannels = [];
+        let filteredChannels = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let favoritesPage = 1;
+        let favoritesPages = 1;
+        let history = JSON.parse(localStorage.getItem('history')) || [];
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        let currentChannelUrl = null;
+        let playlistName = localStorage.getItem('playlistName') || 'Default Playlist';
+
+        // HLS single instance (Phase 1: lifecycle)
+        let hlsInstance = null;
+        let dashPlayer = null;
+        let isPlaying = false;
+
+        // Analysis state
+        let analysisLast = { total: 0, online: 0, offline: 0, list: [], onlineList: [], offlineList: [] };
+        let analysisMode = 'total';
+        let analysisInProgress = false;
+
+        // Context menu
+        let contextMenuChannel = null;
+
+        // ─── DOM REFS ──────────────────────────────────────────────────
+        const player = document.getElementById('player');
+        const fileInput = document.getElementById('fileInput');
+        const urlInput = document.getElementById('urlInput');
+        const loadUrlBtn = document.getElementById('loadUrl');
+        const toggleThemeBtn = document.getElementById('toggleTheme');
+        const toggleSidebarBtn = document.getElementById('toggleSidebar');
+        const sidebar = document.getElementById('sidebar');
+        const searchInput = document.getElementById('searchInput');
+        const channelList = document.getElementById('channelList');
+        const historyList = document.getElementById('historyList');
+        const favoritesList = document.getElementById('favoritesList');
+        const analysisText = document.getElementById('analysisText');
+        const analysisChart = document.getElementById('analysisChart');
+        const analysisStatusSummary = document.getElementById('analysisStatusSummary');
+        const manualCheckBtn = document.getElementById('manualCheckBtn');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevFavPageBtn = document.getElementById('prevFavPage');
+        const nextFavPageBtn = document.getElementById('nextFavPage');
+        const favPageInfo = document.getElementById('favPageInfo');
+        const contextMenu = document.getElementById('contextMenu');
+        const contextPlay = document.getElementById('contextPlay');
+        const contextFavorite = document.getElementById('contextFavorite');
+        const contextInfo = document.getElementById('contextInfo');
+        const prevChannelBtn = document.getElementById('prevChannel');
+        const nextChannelBtn = document.getElementById('nextChannel');
+        const playPauseBtn = document.getElementById('playPause');
+        const volumeUpBtn = document.getElementById('volumeUp');
+        const volumeDownBtn = document.getElementById('volumeDown');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const playlistBar = document.getElementById('playlistBar');
+
+        // ─── UTILITY: XSS ESCAPE (Phase 2) ──────────────────────────
+        function escapeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ─── UTILITY: SAFE TEXT NODE ────────────────────────────────
+        function safeText(str) {
+            return document.createTextNode(str);
+        }
+
+        // ─── UTILITY: SHORTEN URL ────────────────────────────────────
+        function shortenUrl(url) {
+            try {
+                const u = new URL(url);
+                let host = u.host.replace(/^www\./, '');
+                let path = u.pathname.length > 20 ? u.pathname.slice(0, 16) + '…' : u.pathname;
+                return host + path;
+            } catch {
+                return url.length > 24 ? url.slice(0, 20) + '…' : url;
+            }
+        }
+
+        // ─── NOTIFICATION ─────────────────────────────────────────────
+        function showNotification(msg, duration = 2600) {
+            let el = document.getElementById('playerNotification');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'player-notification';
+                el.id = 'playerNotification';
+                document.body.appendChild(el);
+            }
+            el.innerHTML = msg;
+            el.classList.add('show');
+            if (el._timeout) clearTimeout(el._timeout);
+            if (duration !== 0) {
+                el._timeout = setTimeout(() => el.classList.remove('show'), duration);
+            }
+        }
+
+        function hideNotification() {
+            const el = document.getElementById('playerNotification');
+            if (el) el.classList.remove('show');
+        }
+
+        function showSpinner(msg) {
+            showNotification('<span class="spinner"><i class="fas fa-spinner fa-spin"></i></span> ' + (msg || 'Loading…'), 0);
+        }
+
+        function hideSpinner() {
+            hideNotification();
+        }
+
+        // ─── THEME ────────────────────────────────────────────────────
+        function getThemePref() {
+            return localStorage.getItem('theme') === 'light';
+        }
+
+        function setTheme(isLight) {
+            document.body.classList.toggle('light', isLight);
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            toggleThemeBtn.innerHTML = `<i class="fas fa-${isLight ? 'sun' : 'moon'}"></i>`;
+        }
+
+        function toggleTheme() {
+            setTheme(!document.body.classList.contains('light'));
+        }
+
+        // ─── SIDEBAR ──────────────────────────────────────────────────
+        function setSidebarVisible(vis) {
+            sidebar.classList.toggle('hidden', !vis);
+            toggleSidebarBtn.innerHTML = `<i class="fas fa-${vis ? 'times' : 'bars'}"></i>`;
+        }
+
+        function toggleSidebar() {
+            setSidebarVisible(sidebar.classList.contains('hidden'));
+        }
+
+        // ─── TABS ─────────────────────────────────────────────────────
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            if (tabName === 'analysis') refreshAnalysisTab();
+            else if (tabName === 'history') renderHistory();
+            else if (tabName === 'favorites') renderFavorites();
+        }
+
+        // ─── TIME ─────────────────────────────────────────────────────
+        function updateLocalTime() {
+            const el = document.getElementById('localTime');
+            const d = new Date();
+            let h12 = d.getHours() % 12 || 12;
+            let min = String(d.getMinutes()).padStart(2, '0');
+            let ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+            let dd = String(d.getDate()).padStart(2, '0');
+            let mm = String(d.getMonth() + 1).padStart(2, '0');
+            let yyyy = d.getFullYear();
+            el.textContent = `${h12}:${min} ${ampm} (${dd}-${mm}-${yyyy})`;
+        }
+
+        // ─── PLAYLIST BAR ─────────────────────────────────────────────
+        function updatePlaylistBar() {
+            playlistBar.textContent = playlistName ? 'Playlist: ' + playlistName : 'Playlist: Default Playlist';
+        }
+
+        // ─── FOOTER ────────────────────────────────────────────────────
+        function updateFooter() {
+            document.getElementById('sidebarFooter').textContent =
+                '© ' + new Date().getFullYear() + ' Copyrights Bugsfree studio All rights reserved.';
+        }
+
+        // ─── HLS LIFECYCLE (Phase 1) ─────────────────────────────────
+        function destroyHls() {
+            if (hlsInstance) {
+                try {
+                    hlsInstance.destroy();
+                } catch (_) { /* ignore */ }
+                hlsInstance = null;
+            }
+            if (dashPlayer) {
+                try {
+                    dashPlayer.reset();
+                } catch (_) { /* ignore */ }
+                dashPlayer = null;
+            }
+            // Detach any media error handlers
+            player.oncanplay = null;
+            player.onerror = null;
+        }
+
+        // ─── PLAY STREAM (with HLS lifecycle & error recovery) ──────
+        function playStream(url, retry = false) {
+            if (!url) {
+                showNotification('No stream URL provided.', 2000);
+                return;
+            }
+
+            // Clean up previous HLS/DASH instances
+            destroyHls();
+
+            currentChannelUrl = url;
+            highlightCurrentChannel();
+            showSpinner('Loading Stream…');
+
+            // Helper: silent fail with retry
+            const silentFail = () => {
+                hideSpinner();
+                player.pause();
+                if (!retry) {
+                    showNotification('⚠️ Unable to load stream. Trying again…', 2000);
+                    setTimeout(() => playStream(url, true), 1500);
+                } else {
+                    showNotification('❌ Stream unavailable.', 2500);
+                }
+            };
+
+            try {
+                // HLS (.m3u8 / .ts)
+                if (url.includes('.m3u8') || url.includes('.ts')) {
+                    if (Hls.isSupported()) {
+                        hlsInstance = new Hls({
+                            enableWorker: false,
+                            maxBufferLength: 30,
+                            maxMaxBufferLength: 60,
+                        });
+                        hlsInstance.loadSource(url);
+                        hlsInstance.attachMedia(player);
+
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                            player.play().then(() => {
+                                isPlaying = true;
+                                hideSpinner();
+                                player.muted = false;
+                                updatePlayPauseIcon();
+                            }).catch(silentFail);
+                        });
+
+                        // Error recovery (Phase 1)
+                        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                            if (data.fatal) {
+                                switch (data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        showNotification('🔁 Network error – retrying…', 1800);
+                                        hlsInstance.startLoad();
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        showNotification('🔁 Media error – recovering…', 1800);
+                                        hlsInstance.recoverMediaError();
+                                        break;
+                                    default:
+                                        silentFail();
+                                        break;
+                                }
+                            } else {
+                                // non-fatal: ignore or log
+                            }
+                        });
+                    } else {
+                        // fallback: native HLS
+                        player.src = url;
+                        player.oncanplay = () => {
+                            player.play().then(() => { hideSpinner();
+                                isPlaying = true;
+                                updatePlayPauseIcon(); }).catch(silentFail);
+                        };
+                        player.onerror = silentFail;
+                    }
+                }
+                // DASH (.mpd)
+                else if (url.includes('.mpd')) {
+                    dashPlayer = dashjs.MediaPlayer().create();
+                    dashPlayer.initialize(player, url, true);
+                    dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                        player.play().then(() => {
+                            hideSpinner();
+                            isPlaying = true;
+                            updatePlayPauseIcon();
+                            player.muted = false;
+                        }).catch(silentFail);
+                    });
+                    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, silentFail);
+                }
+                // Direct MP4 / RTMP / etc.
+                else if (url.includes('.mp4') || /^(http|https|rtmp):\/\//.test(url)) {
+                    player.src = url;
+                    player.oncanplay = () => {
+                        player.play().then(() => {
+                            hideSpinner();
+                            isPlaying = true;
+                            updatePlayPauseIcon();
+                        }).catch(silentFail);
+                    };
+                    player.onerror = silentFail;
+                } else {
+                    silentFail();
+                }
+            } catch (e) {
+                console.warn('playStream error:', e);
+                silentFail();
+            }
+        }
+
+        // ─── HIGHLIGHT CURRENT CHANNEL ──────────────────────────────
+        function highlightCurrentChannel() {
+            document.querySelectorAll('.channel-item, .favorite-item').forEach(el => {
+                el.classList.remove('playlist-current');
+                if (el.getAttribute('data-url') === currentChannelUrl) {
+                    el.classList.add('playlist-current');
+                }
+            });
+        }
+
+        // ─── PLAY/PAUSE ICON ─────────────────────────────────────────
+        function updatePlayPauseIcon() {
+            playPauseBtn.innerHTML = isPlaying ?
+                '<i class="fas fa-pause"></i>' :
+                '<i class="fas fa-play"></i>';
+        }
+
+        // ─── M3U PARSER ──────────────────────────────────────────────
+        function parseM3U(content) {
+            try {
+                const lines = content.split('\n');
+                const channels = [];
+                let current = null;
+                for (const line of lines) {
+                    const l = line.trim();
+                    if (l.startsWith('#EXTINF')) {
+                        const nameMatch = l.match(/,(.+)$/);
+                        const logoMatch = l.match(/tvg-logo="([^"]+)"/);
+                        current = {
+                            name: nameMatch ? nameMatch[1] : 'Unknown Channel',
+                            logo: logoMatch ? logoMatch[1] : DEFAULT_LOGO,
+                            url: '',
+                        };
+                    } else if (l && !l.startsWith('#') && current) {
+                        current.url = l;
+                        channels.push(current);
+                        current = null;
+                    }
+                }
+                allChannels = channels;
+                filteredChannels = channels.slice();
+                localStorage.setItem('lastPlaylist', JSON.stringify(channels));
+                renderChannels();
+                updatePagination();
+                if (channels.length > 0) {
+                    playStream(channels[0].url);
+                }
+                updatePlaylistBar();
+                // Reset analysis
+                analysisLast = { total: 0, online: 0, offline: 0, list: [], onlineList: [], offlineList: [] };
+                analysisText.textContent = 'Total: 0 | Online: 0 | Offline: 0';
+                analysisChart.style.display = 'none';
+            } catch (e) {
+                showNotification('❌ Failed to parse M3U playlist.', 3200);
+            }
+        }
+
+        // ─── RENDER CHANNELS (DOM-node, XSS-safe) ────────────────────
+        function renderChannels(list) {
+            const source = list || filteredChannels;
+            const start = (currentPage - 1) * CHANNELS_PER_PAGE;
+            const end = Math.min(start + CHANNELS_PER_PAGE, source.length);
+            const pageItems = source.slice(start, end);
+
+            channelList.innerHTML = '';
+
+            for (const ch of pageItems) {
+                const btn = document.createElement('button');
+                btn.className = 'channel-item';
+                btn.setAttribute('data-url', ch.url);
+
+                const isFav = favorites.some(f => f.url === ch.url);
+                const isCur = ch.url === currentChannelUrl;
+                if (isCur) btn.classList.add('playlist-current');
+                if (isFav) btn.classList.add('playlist-favorite');
+
+                // Logo
+                const img = document.createElement('img');
+                img.src = ch.logo || DEFAULT_LOGO;
+                img.alt = ch.name || 'Channel';
+                img.onerror = function() { this.src = DEFAULT_LOGO; };
+                btn.appendChild(img);
+
+                // Icon
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-tv';
+                btn.appendChild(icon);
+
+                // Name (safe)
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = ch.name || 'Unknown';
+                btn.appendChild(nameSpan);
+
+                // Favorite heart
+                const favWrap = document.createElement('span');
+                favWrap.style.cssText = 'margin-left:auto;display:flex;align-items:center;';
+                const heart = document.createElement('i');
+                heart.className = 'fas fa-heart favorite-btn' + (isFav ? ' text-red' : '');
+                heart.setAttribute('data-url', ch.url);
+                heart.setAttribute('data-name', ch.name || '');
+                heart.setAttribute('data-logo', ch.logo || DEFAULT_LOGO);
+                favWrap.appendChild(heart);
+                btn.appendChild(favWrap);
+
+                // Events
+                btn.addEventListener('click', () => playStream(ch.url));
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, btn);
+                });
+                heart.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(ch.url, ch.name || '', ch.logo || DEFAULT_LOGO);
+                });
+
+                channelList.appendChild(btn);
+            }
+
+            highlightCurrentChannel();
+        }
+
+        // ─── PAGINATION ──────────────────────────────────────────────
+        function updatePagination() {
+            const total = filteredChannels.length;
+            totalPages = Math.max(1, Math.ceil(total / CHANNELS_PER_PAGE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages;
+
+            // Favorites pagination
+            favoritesPages = Math.max(1, Math.ceil(favorites.length / CHANNELS_PER_PAGE));
+            if (favoritesPage > favoritesPages) favoritesPage = favoritesPages;
+            favPageInfo.textContent = `Page ${favoritesPage} of ${favoritesPages}`;
+            prevFavPageBtn.disabled = favoritesPage === 1;
+            nextFavPageBtn.disabled = favoritesPage === favoritesPages;
+        }
+
+        function changePage(dir) {
+            currentPage = Math.max(1, Math.min(currentPage + dir, totalPages));
+            renderChannels();
+        }
+
+        function changeFavoritesPage(dir) {
+            favoritesPage = Math.max(1, Math.min(favoritesPage + dir, favoritesPages));
+            renderFavorites();
+        }
+
+        // ─── FAVORITES (XSS-safe) ────────────────────────────────────
+        function toggleFavorite(url, name, logo) {
+            const idx = favorites.findIndex(f => f.url === url);
+            if (idx === -1) {
+                favorites.push({ url, name: name || 'Unknown', logo: logo || DEFAULT_LOGO });
+                showNotification('❤️ Added to favorites', 1500);
+            } else {
+                favorites.splice(idx, 1);
+                showNotification('💔 Removed from favorites', 1500);
+            }
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            renderFavorites();
+            renderChannels();
+        }
+
+        function renderFavorites() {
+            const start = (favoritesPage - 1) * CHANNELS_PER_PAGE;
+            const end = Math.min(start + CHANNELS_PER_PAGE, favorites.length);
+            const pageItems = favorites.slice(start, end);
+
+            favoritesList.innerHTML = '';
+
+            for (const f of pageItems) {
+                const btn = document.createElement('button');
+                btn.className = 'favorite-item playlist-favorite';
+                btn.setAttribute('data-url', f.url);
+                if (f.url === currentChannelUrl) btn.classList.add('playlist-current');
+
+                const img = document.createElement('img');
+                img.src = f.logo || DEFAULT_LOGO;
+                img.alt = f.name || 'Channel';
+                img.onerror = function() { this.src = DEFAULT_LOGO; };
+                btn.appendChild(img);
+
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-tv';
+                btn.appendChild(icon);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = f.name || 'Unknown';
+                btn.appendChild(nameSpan);
+
+                const wrap = document.createElement('span');
+                wrap.style.cssText = 'margin-left:auto;display:flex;align-items:center;';
+                const heart = document.createElement('i');
+                heart.className = 'fas fa-heart favorite-btn text-red';
+                heart.setAttribute('data-url', f.url);
+                heart.setAttribute('data-name', f.name || '');
+                heart.setAttribute('data-logo', f.logo || DEFAULT_LOGO);
+                wrap.appendChild(heart);
+                btn.appendChild(wrap);
+
+                btn.addEventListener('click', () => playStream(f.url));
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, btn);
+                });
+                heart.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(f.url, f.name || '', f.logo || DEFAULT_LOGO);
+                });
+
+                favoritesList.appendChild(btn);
+            }
+
+            updatePagination();
+            highlightCurrentChannel();
+        }
+
+        // ─── HISTORY (XSS-safe) ──────────────────────────────────────
+        function renderHistory() {
+            historyList.innerHTML = '';
+            if (!history.length) {
+                const p = document.createElement('p');
+                p.textContent = 'No history available.';
+                historyList.appendChild(p);
+                return;
+            }
+
+            for (let i = 0; i < history.length; i++) {
+                const h = history[i];
+                const btn = document.createElement('button');
+                btn.className = 'history-item';
+                btn.setAttribute('data-index', i);
+
+                const label = document.createElement('span');
+                label.className = 'history-label';
+                let displayName = h.name || 'Unknown';
+                if (h.type === 'url' && /^https?:\/\//.test(displayName)) {
+                    displayName = shortenUrl(displayName);
+                }
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-' + (h.type === 'file' ? 'file' : 'link');
+                label.appendChild(icon);
+                label.appendChild(safeText(' ' + displayName));
+                btn.appendChild(label);
+
+                const actions = document.createElement('span');
+                actions.style.cssText = 'margin-left:auto;display:flex;align-items:center;';
+
+                const reload = document.createElement('i');
+                reload.className = 'fas fa-redo action-btn';
+                reload.title = 'Reload';
+                reload.setAttribute('data-index', i);
+                actions.appendChild(reload);
+
+                const del = document.createElement('i');
+                del.className = 'fas fa-trash delete-btn';
+                del.title = 'Delete';
+                del.setAttribute('data-index', i);
+                actions.appendChild(del);
+
+                btn.appendChild(actions);
+
+                btn.addEventListener('click', () => loadHistoryItem(i));
+                reload.addEventListener('click', (e) => { e.stopPropagation();
+                    loadHistoryItem(i); });
+                del.addEventListener('click', (e) => { e.stopPropagation();
+                    deleteHistoryItem(i); });
+
+                historyList.appendChild(btn);
+            }
+
+            // Delete all button
+            const bar = document.createElement('div');
+            bar.className = 'history-list-bar';
+            const delAll = document.createElement('button');
+            delAll.textContent = '🗑️ Delete All';
+            delAll.addEventListener('click', deleteAllHistory);
+            bar.appendChild(delAll);
+            historyList.appendChild(bar);
+        }
+
+        function loadHistoryItem(index) {
+            const item = history[index];
+            if (!item) return;
+            if (item.type === 'file' && item.content) {
+                if (item.name && item.name.endsWith('.m3u')) {
+                    parseM3U(item.content);
+                } else if (item.name && item.name.endsWith('.json')) {
+                    try {
+                        const json = JSON.parse(item.content);
+                        if (json.url) playStream(json.url);
+                    } catch (_) {}
+                } else if (item.name && item.name.endsWith('.txt')) {
+                    if (item.content.trim()) playStream(item.content.trim());
+                } else {
+                    // fallback: try to play as URL
+                    if (item.content.trim().startsWith('http')) playStream(item.content.trim());
+                }
+            } else if (item.type === 'url' && item.url) {
+                if (item.url.endsWith('.m3u')) {
+                    fetch(item.url).then(r => r.text()).then(parseM3U).catch(() => {});
+                } else {
+                    playStream(item.url);
+                }
+            }
+        }
+
+        function deleteHistoryItem(index) {
+            history.splice(index, 1);
+            localStorage.setItem('history', JSON.stringify(history));
+            renderHistory();
+            showNotification('History entry deleted.', 1800);
+        }
+
+        function deleteAllHistory() {
+            if (!history.length) return;
+            if (confirm('Delete all history?')) {
+                history = [];
+                localStorage.setItem('history', JSON.stringify(history));
+                renderHistory();
+                showNotification('All history deleted.', 2000);
+            }
+        }
+
+        // ─── FILE / URL HANDLING ─────────────────────────────────────
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const content = ev.target.result;
+                history.push({ type: 'file', name: file.name, content });
+                localStorage.setItem('history', JSON.stringify(history));
+                renderHistory();
+
+                if (file.name.endsWith('.m3u')) {
+                    parseM3U(content);
+                    playlistName = file.name;
+                    localStorage.setItem('playlistName', file.name);
+                    updatePlaylistBar();
+                } else if (file.name.endsWith('.json')) {
+                    try {
+                        const json = JSON.parse(content);
+                        if (json.url) playStream(json.url);
+                        else if (Array.isArray(json.channels)) {
+                            allChannels = json.channels.map(ch => ({
+                                name: ch.name || 'Unknown',
+                                url: ch.url,
+                                logo: ch.logo || DEFAULT_LOGO,
+                            }));
+                            filteredChannels = allChannels.slice();
+                            localStorage.setItem('lastPlaylist', JSON.stringify(allChannels));
+                            playlistName = file.name;
+                            localStorage.setItem('playlistName', file.name);
+                            renderChannels();
+                            updatePagination();
+                            if (allChannels.length) playStream(allChannels[0].url);
+                            updatePlaylistBar();
+                        }
+                    } catch (_) {}
+                } else if (file.name.endsWith('.txt')) {
+                    if (content.trim()) playStream(content.trim());
+                } else {
+                    if (content.trim().startsWith('#EXTM3U') || content.includes('#EXTINF')) {
+                        parseM3U(content);
+                        playlistName = file.name;
+                        localStorage.setItem('playlistName', file.name);
+                        updatePlaylistBar();
+                    } else {
+                        try {
+                            const json = JSON.parse(content);
+                            if (json.url) playStream(json.url);
+                        } catch {
+                            if (content.trim().startsWith('http')) playStream(content.trim());
+                        }
+                    }
+                }
+                showNotification('File loaded successfully.', 2200);
+                fileInput.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function handleUrlLoad() {
+            const url = urlInput.value.trim();
+            if (!url) return;
+            history.push({ type: 'url', name: url, url });
+            localStorage.setItem('history', JSON.stringify(history));
+            renderHistory();
+
+            if (url.endsWith('.m3u')) {
+                fetch(url).then(r => r.text()).then(txt => {
+                    parseM3U(txt);
+                    playlistName = url.split('/').pop() || url;
+                    localStorage.setItem('playlistName', playlistName);
+                    updatePlaylistBar();
+                }).catch(() => {});
+            } else if (url.endsWith('.json')) {
+                fetch(url).then(r => r.json()).then(json => {
+                    if (json.url) playStream(json.url);
+                    else if (Array.isArray(json.channels)) {
+                        allChannels = json.channels.map(ch => ({
+                            name: ch.name || 'Unknown',
+                            url: ch.url,
+                            logo: ch.logo || DEFAULT_LOGO,
+                        }));
+                        filteredChannels = allChannels.slice();
+                        localStorage.setItem('lastPlaylist', JSON.stringify(allChannels));
+                        playlistName = url.split('/').pop() || url;
+                        localStorage.setItem('playlistName', playlistName);
+                        renderChannels();
+                        updatePagination();
+                        if (allChannels.length) playStream(allChannels[0].url);
+                        updatePlaylistBar();
+                    }
+                }).catch(() => {});
+            } else if (url.endsWith('.txt')) {
+                fetch(url).then(r => r.text()).then(txt => {
+                    if (txt.trim()) playStream(txt.trim());
+                }).catch(() => {});
+            } else {
+                playStream(url);
+            }
+            showNotification('URL loaded.', 2000);
+            urlInput.value = '';
+        }
+
+        // ─── SEARCH ──────────────────────────────────────────────────
+        function handleSearch() {
+            const q = searchInput.value.toLowerCase().trim();
+            if (!q) {
+                filteredChannels = allChannels.slice();
+            } else {
+                filteredChannels = allChannels.filter(ch =>
+                    ch.name.toLowerCase().includes(q)
+                );
+            }
+            currentPage = 1;
+            renderChannels();
+            updatePagination();
+        }
+
+        // ─── CONTEXT MENU ────────────────────────────────────────────
+        function showContextMenu(e, btn) {
+            contextMenuChannel = btn;
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = e.pageX + 'px';
+            contextMenu.style.top = e.pageY + 'px';
+            const url = btn.getAttribute('data-url');
+            const isFav = favorites.some(f => f.url === url);
+            contextFavorite.innerHTML = isFav ?
+                '<i class="fas fa-heart-broken"></i> Remove from Favorites' :
+                '<i class="fas fa-heart"></i> Add to Favorites';
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+            contextMenuChannel = null;
+        }
+
+        function handleContextPlay() {
+            if (contextMenuChannel) playStream(contextMenuChannel.getAttribute('data-url'));
+            hideContextMenu();
+        }
+
+        function handleContextFavorite() {
+            if (contextMenuChannel) {
+                const url = contextMenuChannel.getAttribute('data-url');
+                const name = contextMenuChannel.querySelector('span')?.textContent || 'Unknown';
+                const logo = contextMenuChannel.querySelector('img')?.src || DEFAULT_LOGO;
+                toggleFavorite(url, name, logo);
+            }
+            hideContextMenu();
+        }
+
+        function handleContextInfo() {
+            if (contextMenuChannel) {
+                const url = contextMenuChannel.getAttribute('data-url');
+                const name = contextMenuChannel.querySelector('span')?.textContent || 'Unknown';
+                showNotification('📺 ' + name + '<br>🔗 ' + shortenUrl(url), 4000);
+            }
+            hideContextMenu();
+        }
+
+        // ─── PLAYER CONTROLS ─────────────────────────────────────────
+        function playPreviousChannel() {
+            const list = filteredChannels.length ? filteredChannels : allChannels;
+            const idx = list.findIndex(ch => ch.url === currentChannelUrl);
+            if (idx > 0) {
+                playStream(list[idx - 1].url);
+                showNotification('⏪ ' + list[idx - 1].name, 1500);
+            } else {
+                showNotification('Already at first channel.', 1200);
+            }
+        }
+
+        function playNextChannel() {
+            const list = filteredChannels.length ? filteredChannels : allChannels;
+            const idx = list.findIndex(ch => ch.url === currentChannelUrl);
+            if (idx < list.length - 1 && idx !== -1) {
+                playStream(list[idx + 1].url);
+                showNotification('⏩ ' + list[idx + 1].name, 1500);
+            } else {
+                showNotification('Already at last channel.', 1200);
+            }
+        }
+
+        function togglePlayPause() {
+            if (player.paused) {
+                player.play().then(() => { isPlaying = true;
+                    updatePlayPauseIcon(); }).catch(() => {});
+            } else {
+                player.pause();
+                isPlaying = false;
+                updatePlayPauseIcon();
+            }
+        }
+
+        function volumeUp() {
+            player.volume = Math.min(1, player.volume + 0.1);
+            showNotification('🔊 Volume: ' + Math.round(player.volume * 100) + '%', 1200);
+        }
+
+        function volumeDown() {
+            player.volume = Math.max(0, player.volume - 0.1);
+            showNotification('🔉 Volume: ' + Math.round(player.volume * 100) + '%', 1200);
+        }
+
+        // ─── FULLSCREEN (event-driven sync, Phase 3) ────────────────
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                player.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+
+        function updateFullscreenIcon() {
+            const isFs = !!document.fullscreenElement;
+            fullscreenBtn.innerHTML = isFs ?
+                '<i class="fas fa-compress"></i>' :
+                '<i class="fas fa-expand"></i>';
+        }
+
+        // ─── ANALYSIS (real health checks, Phase 2) ──────────────────
+        async function runHealthChecks() {
+            if (analysisInProgress) return;
+            analysisInProgress = true;
+            analysisText.textContent = '🔄 Checking streams…';
+            analysisChart.style.display = 'block';
+
+            const list = allChannels.length ? allChannels : [];
+            if (!list.length) {
+                analysisText.textContent = 'No playlist loaded.';
+                analysisChart.style.display = 'none';
+                analysisLast = { total: 0, online: 0, offline: 0, list: [], onlineList: [], offlineList: [] };
+                analysisInProgress = false;
+                return;
+            }
+
+            const online = [];
+            const offline = [];
+
+            // Check each channel with a lightweight fetch (no-cors)
+            for (const ch of list) {
+                try {
+                    const resp = await fetch(ch.url, {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        cache: 'no-store',
+                        signal: AbortSignal.timeout(5000),
+                    });
+                    // With no-cors, response is opaque; we treat as "reachable" if we got any response
+                    online.push(ch);
+                } catch (_) {
+                    offline.push(ch);
+                }
+            }
+
+            analysisLast = {
+                total: list.length,
+                online: online.length,
+                offline: offline.length,
+                list: list,
+                onlineList: online,
+                offlineList: offline,
+            };
+
+            analysisText.textContent =
+                'Total: ' + list.length + ' | Online: ' + online.length + ' | Offline: ' + offline.length;
+            drawChart(online.length, offline.length);
+            updateAnalysisList();
+            analysisInProgress = false;
+        }
+
+        function drawChart(online, offline) {
+            const ctx = analysisChart.getContext('2d');
+            const w = analysisChart.width,
+                h = analysisChart.height;
+            ctx.clearRect(0, 0, w, h);
+            const cx = w / 2,
+                cy = h / 2,
+                r = Math.min(cx, cy) - 10;
+            const total = online + offline || 1;
+            const onlineAngle = (online / total) * 2 * Math.PI;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, onlineAngle, false);
+            ctx.lineTo(cx, cy);
+            ctx.fillStyle = '#28a745';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, onlineAngle, 2 * Math.PI, false);
+            ctx.lineTo(cx, cy);
+            ctx.fillStyle = '#dc3545';
+            ctx.fill();
+        }
+
+        function switchAnalysisMode(mode) {
+            analysisMode = mode;
+            document.querySelectorAll('.analysis-buttons button').forEach(b => b.classList.remove('active'));
+            if (mode === 'total') document.getElementById('showTotal').classList.add('active');
+            else if (mode === 'online') document.getElementById('showOnline').classList.add('active');
+            else if (mode === 'offline') document.getElementById('showOffline').classList.add('active');
+            updateAnalysisList();
+        }
+
+        function updateAnalysisList() {
+            let list = [];
+            if (analysisMode === 'total') list = analysisLast.list || [];
+            else if (analysisMode === 'online') list = analysisLast.onlineList || [];
+            else if (analysisMode === 'offline') list = analysisLast.offlineList || [];
+            currentPage = 1;
+            filteredChannels = list.length ? list : [];
+            renderChannels();
+            updatePagination();
+        }
+
+        function refreshAnalysisTab() {
+            if (analysisLast.total === 0 && allChannels.length > 0) {
+                analysisText.textContent = 'Click the check icon to check status.';
+                analysisChart.style.display = 'none';
+            } else {
+                analysisText.textContent =
+                    'Total: ' + analysisLast.total + ' | Online: ' + analysisLast.online + ' | Offline: ' + analysisLast
+                    .offline;
+                analysisChart.style.display = analysisLast.total ? 'block' : 'none';
+                if (analysisLast.total) drawChart(analysisLast.online, analysisLast.offline);
+                updateAnalysisList();
+            }
+        }
+
+        // ─── INTELLIGENT WHEEL SCROLL (Phase 3) ──────────────────────
+        function setupWheelScrolling() {
+            const containers = [channelList, favoritesList, historyList, sidebar];
+            for (const el of containers) {
+                if (!el) continue;
+                el.addEventListener('wheel', function(ev) {
+                    const atTop = this.scrollTop === 0 && ev.deltaY < 0;
+                    const atBottom = this.scrollTop + this.clientHeight >= this.scrollHeight && ev.deltaY > 0;
+                    if (atTop || atBottom) {
+                        // Let the event bubble to window scroll
+                        return;
+                    }
+                    ev.preventDefault();
+                    // Scroll the container itself
+                    this.scrollBy({ top: ev.deltaY, behavior: 'auto' });
+                }, { passive: false });
+            }
+        }
+
+        // ─── KEYBOARD ─────────────────────────────────────────────────
+        function handleKeyboard(e) {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            switch (e.key) {
+                case 'ArrowRight':
+                    e.preventDefault();
+                    playNextChannel();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    playPreviousChannel();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    volumeUp();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    volumeDown();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    togglePlayPause();
+                    break;
+                case 'f':
+                case 'F':
+                    e.preventDefault();
+                    toggleFullscreen();
+                    break;
+                case 'Escape':
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                    break;
+            }
+        }
+
+        // ─── LOAD DEFAULT ─────────────────────────────────────────────
+        function loadDefaultPlaylist() {
+            const stored = localStorage.getItem('lastPlaylist');
+            if (stored) {
+                try {
+                    allChannels = JSON.parse(stored);
+                    filteredChannels = allChannels.slice();
+                    renderChannels();
+                    updatePagination();
+                    if (allChannels.length) playStream(allChannels[0].url);
+                    updatePlaylistBar();
+                    return;
+                } catch (_) {}
+            }
+            parseM3U(DEFAULT_PLAYLIST);
+            playlistName = 'Default Playlist';
+            localStorage.setItem('playlistName', playlistName);
+            updatePlaylistBar();
+        }
+
+        // ─── INIT ─────────────────────────────────────────────────────
+        function init() {
+            // Time
+            updateLocalTime();
+            setInterval(updateLocalTime, 1000);
+
+            // Footer
+            updateFooter();
+
+            // Theme
+            setTheme(getThemePref());
+
+            // Sidebar visible
+            setSidebarVisible(true);
+
+            // Fullscreen sync (Phase 3)
+            document.addEventListener('fullscreenchange', updateFullscreenIcon);
+
+            // Wheel scrolling
+            setupWheelScrolling();
+
+            // Load playlist
+            loadDefaultPlaylist();
+
+            // Render history & favorites
+            renderHistory();
+            renderFavorites();
+
+            // ─── EVENT BINDING ──────────────────────────────────────
+
+            // Theme
+            toggleThemeBtn.addEventListener('click', toggleTheme);
+
+            // Sidebar
+            toggleSidebarBtn.addEventListener('click', toggleSidebar);
+
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            // Analysis buttons
+            document.getElementById('showTotal').addEventListener('click', () => switchAnalysisMode('total'));
+            document.getElementById('showOnline').addEventListener('click', () => switchAnalysisMode('online'));
+            document.getElementById('showOffline').addEventListener('click', () => switchAnalysisMode('offline'));
+
+            // Manual check
+            manualCheckBtn.addEventListener('click', runHealthChecks);
+
+            // File upload
+            fileInput.addEventListener('change', handleFileUpload);
+
+            // URL load
+            loadUrlBtn.addEventListener('click', handleUrlLoad);
+            urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleUrlLoad(); });
+
+            // Search
+            searchInput.addEventListener('input', handleSearch);
+
+            // Pagination
+            prevPageBtn.addEventListener('click', () => changePage(-1));
+            nextPageBtn.addEventListener('click', () => changePage(1));
+            prevFavPageBtn.addEventListener('click', () => changeFavoritesPage(-1));
+            nextFavPageBtn.addEventListener('click', () => changeFavoritesPage(1));
+
+            // Context menu
+            contextPlay.addEventListener('click', handleContextPlay);
+            contextFavorite.addEventListener('click', handleContextFavorite);
+            contextInfo.addEventListener('click', handleContextInfo);
+            document.addEventListener('click', hideContextMenu);
+            document.addEventListener('contextmenu', (e) => {
+                if (!e.target.closest('.channel-item') && !e.target.closest('.favorite-item')) {
+                    hideContextMenu();
+                }
+            });
+
+            // Player controls
+            prevChannelBtn.addEventListener('click', playPreviousChannel);
+            nextChannelBtn.addEventListener('click', playNextChannel);
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            volumeUpBtn.addEventListener('click', volumeUp);
+            volumeDownBtn.addEventListener('click', volumeDown);
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+            // Keyboard
+            document.addEventListener('keydown', handleKeyboard);
+
+            // Player events: update play/pause state
+            player.addEventListener('play', () => { isPlaying = true;
+                updatePlayPauseIcon(); });
+            player.addEventListener('pause', () => { isPlaying = false;
+                updatePlayPauseIcon(); });
+            player.addEventListener('ended', () => { isPlaying = false;
+                updatePlayPauseIcon(); });
+
+            console.log('✅ Project Resilience — IPTV Player rebuilt.');
+        }
+
+        // ─── START ────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
 </body>
 </html>
