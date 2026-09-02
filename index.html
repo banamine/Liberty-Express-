@@ -1,1049 +1,608 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liberty Express · Professional Control Center</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<style>
-:root {
---bg: #0a0a0a;
---bg-secondary: #0f0f0f;
---bar: rgba(26, 26, 26, 0.95);
---accent: #ff4500;
---accent-glow: rgba(255, 69, 0, 0.38);
---accent-light: #ffaa44;
---text: #e8e8e8;
---text-secondary: #aaa;
---border: #2e2e2e;
---border-light: #3a3a3a;
---card: #141414;
---card-hover: #1e1e1e;
---success: #00cc66;
---warning: #ffaa00;
---popout-bg: rgba(255, 215, 0, 0.22);
---popout-hover: rgba(255, 215, 0, 0.45);
---popout-text: #ffeb3b;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express Player - M3U Loader</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --ground: #0f1419;
+            --surface: #1a1f2e;
+            --elevated: #242d3d;
+            --accent: #00d9ff;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+        }
 
-* { box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; font-family: 'Inter', sans-serif; background: var(--ground); color: var(--text-primary); overflow: hidden; }
 
-body {
-margin: 0;
-background: var(--bg);
-color: var(--text);
-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-line-height: 1.5;
-overflow-x: hidden;
-}
+        body { display: flex; flex-direction: column; }
 
-#remote-bar {
-position: fixed;
-top: 0;
-left: 0;
-right: 0;
-background: var(--bar);
-backdrop-filter: blur(12px) saturate(180%);
--webkit-backdrop-filter: blur(12px) saturate(180%);
-padding: 14px 20px;
-display: flex;
-flex-wrap: wrap;
-gap: 10px;
-align-items: center;
-z-index: 9999;
-border-bottom: 1px solid var(--border);
-box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-}
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: linear-gradient(to bottom, rgba(0, 217, 255, 0.08), transparent);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
 
-button, select, input {
-padding: 10px 15px;
-font-size: 14px;
-border-radius: 8px;
-border: 1px solid var(--border-light);
-background: #1f1f1f;
-color: inherit;
-cursor: pointer;
-transition: all 0.22s ease;
-font-family: inherit;
-font-weight: 500;
-}
+        .logo { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .now-playing { font-size: 12px; color: var(--text-secondary); flex: 1; text-align: center; font-family: monospace; }
 
-button:hover:not(:disabled) {
-transform: translateY(-2px);
-border-color: var(--accent);
-box-shadow: 0 4px 12px var(--accent-glow);
-}
+        .btn-menu {
+            background: none;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-menu:hover { background: var(--accent); color: var(--ground); }
 
-button:active {
-transform: translateY(0);
-}
+        /* Player */
+        .player-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            overflow: hidden;
+        }
 
-button:disabled {
-opacity: 0.4;
-cursor: not-allowed;
-}
+        video { width: 100%; height: 100%; object-fit: contain; }
 
-#pop-out {
-background: var(--popout-bg);
-color: var(--popout-text);
-border-color: rgba(255,215,0,0.35);
-font-weight: 600;
-}
+        /* Controls */
+        .controls-bar {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
 
-#pop-out:hover {
-background: var(--popout-hover);
-box-shadow: 0 0 18px rgba(255,215,0,0.5);
-}
+        .progress {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            cursor: pointer;
+            position: relative;
+        }
 
-select, input[type="text"] {
-min-width: 160px;
-}
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+        }
 
-.search-wrapper {
-position: relative;
-display: inline-block;
-}
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 12px;
+        }
 
-#search-input {
-padding-right: 36px;
-width: 220px;
-background: #1a1a1a;
-border-color: var(--border);
-}
+        .btn-ctrl {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 18px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .btn-ctrl:hover { color: var(--accent); background: var(--elevated); }
 
-#search-input:focus {
-outline: none;
-border-color: var(--accent);
-box-shadow: 0 0 8px var(--accent-glow);
-}
+        .time-info { font-size: 12px; font-family: monospace; color: var(--text-secondary); min-width: 100px; }
 
-#clear-search {
-position: absolute;
-right: 40px;
-top: 50%;
-transform: translateY(-50%);
-background: transparent;
-border: none;
-color: #888;
-font-size: 16px;
-cursor: pointer;
-display: none;
-padding: 0;
-width: 24px;
-height: 24px;
-}
+        /* Menu */
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 99;
+        }
+        .menu-backdrop.open { opacity: 1; pointer-events: auto; }
 
-#clear-search:hover {
-color: white;
-}
+        .menu {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 380px;
+            height: 100%;
+            background: var(--surface);
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        .menu.open { right: 0; }
 
-#page-frame {
-display: none;
-width: 100%;
-height: 100vh;
-border: none;
-background: #000;
-padding-top: 70px;
-box-sizing: border-box;
-}
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
 
-#content-hub {
-padding: 90px 30px 50px;
-max-width: 1520px;
-margin: 0 auto;
-}
+        .menu-title { font-size: 14px; font-weight: 700; text-transform: uppercase; color: var(--accent); letter-spacing: 0.5px; }
 
-h1 {
-text-align: center;
-color: var(--accent);
-font-size: 2.8rem;
-margin: 0 0 8px;
-font-weight: 700;
-letter-spacing: -0.5px;
-}
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.subtitle {
-text-align: center;
-color: var(--text-secondary);
-margin-bottom: 40px;
-font-size: 1rem;
-font-weight: 500;
-letter-spacing: 0.3px;
-}
+        .menu-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            padding: 0 8px;
+        }
 
-details {
-margin: 28px 0;
-border: 1px solid var(--border);
-border-radius: 12px;
-overflow: hidden;
-background: var(--card);
-}
+        .tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            padding: 12px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-details[open] {
-background: var(--card-hover);
-}
+        .upload-area {
+            padding: 20px;
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            margin: 12px;
+            transition: all 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent); background: rgba(0, 217, 255, 0.05); }
 
-summary {
-padding: 18px 24px;
-background: #181818;
-font-size: 1.3rem;
-font-weight: 600;
-color: var(--accent);
-cursor: pointer;
-user-select: none;
-display: flex;
-align-items: center;
-gap: 12px;
-transition: all 0.22s ease;
-}
+        .upload-area-text { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .upload-area-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
-summary:hover {
-background: #1e1e1e;
-padding-left: 28px;
-}
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+            list-style: none;
+        }
 
-summary::marker {
-color: var(--accent);
-}
+        .channel-list::-webkit-scrollbar { width: 6px; }
+        .channel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.category-badge {
-display: inline-block;
-background: rgba(255, 69, 0, 0.15);
-color: var(--accent-light);
-padding: 3px 10px;
-border-radius: 6px;
-font-size: 0.85rem;
-font-weight: 600;
-margin-left: auto;
-}
+        .channel-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s;
+        }
+        .channel-item:hover {
+            background: var(--elevated);
+            border-left: 3px solid var(--accent);
+            padding-left: 9px;
+        }
+        .channel-item.active {
+            background: rgba(0, 217, 255, 0.1);
+            border-left: 3px solid var(--accent);
+            padding-left: 9px;
+        }
 
-.grid {
-display: grid;
-grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-gap: 18px;
-padding: 24px;
-}
+        .channel-number {
+            font-size: 10px;
+            font-weight: 700;
+            font-family: monospace;
+            color: var(--accent);
+            background: var(--elevated);
+            padding: 2px 6px;
+            border-radius: 3px;
+            min-width: 28px;
+            text-align: center;
+        }
 
-@media (max-width: 1200px) {
-.grid {
-grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-}
-}
+        .channel-info { flex: 1; min-width: 0; }
+        .channel-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .channel-url { font-size: 10px; font-family: monospace; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-@media (max-width: 768px) {
-.grid {
-grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-gap: 14px;
-padding: 16px;
-}
-}
+        .empty-msg {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            gap: 12px;
+            padding: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
 
-.item {
-position: relative;
-background: #1a1a1a;
-padding: 20px;
-border-radius: 12px;
-border: 1px solid #2a2a2a;
-transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-display: flex;
-flex-direction: column;
-}
+        .empty-icon { font-size: 40px; opacity: 0.5; }
+        .empty-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
-.item:hover {
-transform: translateY(-6px);
-border-color: var(--accent);
-box-shadow: 0 12px 32px rgba(255, 69, 0, 0.18);
-background: #222;
-}
+        input[type="file"] { display: none; }
+        .hidden { display: none !important; }
 
-.item.active {
-border-color: var(--accent);
-box-shadow: 0 0 0 2px var(--accent), 0 12px 32px rgba(255, 69, 0, 0.28);
-background: #1e1e1e;
-transform: translateY(-3px);
-}
+        .search-box {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
 
-.item-header {
-display: flex;
-align-items: flex-start;
-gap: 12px;
-margin-bottom: 8px;
-}
+        .search-box input {
+            width: 100%;
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
 
-.item i.thumb-icon {
-font-size: 1.6rem;
-color: var(--accent-light);
-flex-shrink: 0;
-width: 28px;
-text-align: center;
-}
+        .search-box input:focus { outline: none; border-color: var(--accent); }
 
-.item-content {
-flex: 1;
-min-width: 0;
-}
-
-.item a {
-color: var(--accent-light);
-text-decoration: none;
-font-weight: 600;
-display: block;
-margin-bottom: 8px;
-line-height: 1.3;
-word-break: break-word;
-transition: color 0.2s ease;
-}
-
-.item a:hover {
-color: #ffdd57;
-}
-
-.tags {
-font-size: 0.78rem;
-color: #777;
-margin-top: 6px;
-display: flex;
-flex-wrap: wrap;
-gap: 6px;
-}
-
-.tag {
-background: rgba(255, 69, 0, 0.08);
-padding: 2px 8px;
-border-radius: 4px;
-color: #aaa;
-}
-
-.star {
-position: absolute;
-top: 14px;
-right: 14px;
-font-size: 1.4rem;
-cursor: pointer;
-color: #555;
-transition: all 0.2s;
-z-index: 10;
-line-height: 1;
-}
-
-.star:hover {
-color: #ffdd57;
-transform: scale(1.15);
-}
-
-.star.active i {
-color: #ffdd57;
-text-shadow: 0 0 10px rgba(255, 221, 87, 0.6);
-}
-
-.hidden { display: none !important; }
-
-#fallback-notice {
-position: fixed;
-inset: 0;
-background: rgba(0,0,0,0.92);
-display: none;
-align-items: center;
-justify-content: center;
-z-index: 10000;
-color: white;
-text-align: center;
-padding: 40px;
-}
-
-#fallback-notice div {
-background: var(--card);
-padding: 40px;
-border-radius: 16px;
-border: 1px solid var(--border);
-max-width: 480px;
-}
-
-#fallback-notice h2 {
-color: var(--accent);
-margin-top: 0;
-}
-
-#fallback-notice button {
-margin-top: 24px;
-margin-right: 12px;
-padding: 12px 28px;
-font-size: 1rem;
-background: var(--accent);
-border: none;
-border-radius: 8px;
-color: white;
-cursor: pointer;
-font-weight: 600;
-}
-
-#fallback-notice button:last-child {
-background: transparent;
-border: 1px solid var(--border);
-color: var(--text);
-}
-
-.iframe-loader {
-display: none;
-position: fixed;
-top: 50%;
-left: 50%;
-transform: translate(-50%, -50%);
-border: 4px solid rgba(255, 69, 0, 0.2);
-border-top: 4px solid var(--accent);
-border-radius: 50%;
-width: 50px;
-height: 50px;
-animation: spin 1s linear infinite;
-z-index: 10001;
-}
-
-@keyframes spin {
-0% { transform: translate(-50%, -50%) rotate(0deg); }
-100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible, .star:focus-visible {
-outline: 3px solid var(--accent);
-outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-* {
-animation-duration: 0.01ms !important;
-animation-iteration-count: 1 !important;
-transition-duration: 0.01ms !important;
-}
-}
-</style>
+        @media (max-width: 600px) {
+            .menu { width: 100%; right: -100%; }
+            .time-info { display: none; }
+        }
+    </style>
 </head>
 <body>
-<div id="remote-bar" role="toolbar" aria-label="Main navigation toolbar">
-<button id="home-btn" title="Return to Hub (Alt+H)" aria-label="Home"><i class="fas fa-home"></i></button>
-<button id="back-btn" title="Go Back (Alt+Left)" disabled aria-label="Back"><i class="fas fa-arrow-left"></i></button>
-<button id="fwd-btn" title="Go Forward (Alt+Right)" disabled aria-label="Forward"><i class="fas fa-arrow-right"></i></button>
-<button id="refresh-btn" title="Refresh (Alt+R)" aria-label="Refresh"><i class="fas fa-sync-alt"></i></button>
-<button id="clear-history-btn" title="Clear History (Alt+C)" aria-label="Clear history"><i class="fas fa-trash-alt"></i></button>
+    <header>
+        <div class="logo">▶ Express Player</div>
+        <div class="now-playing" id="nowPlaying">Select a stream</div>
+        <button class="btn-menu" id="menuBtn">Menu</button>
+    </header>
 
-<select id="page-menu" aria-label="Quick section selector">
-<option value="">📍 Quick Jump...</option>
-<option value="home">🏠 Home Hub</option>
-<option value="news">📰 News</option>
-<option value="tv">📺 Live TV</option>
-<option value="movies">🎬 Movies</option>
-<option value="series">📺 Series</option>
-<option value="radio">🎙️ Radio</option>
-<option value="general">🎯 General</option>
-</select>
-<button id="go-btn">Go</button>
+    <div class="player-area">
+        <video id="player"></video>
+    </div>
 
-<div class="search-wrapper">
-<input type="text" id="search-input" placeholder="Search items..." aria-label="Search">
-<button id="clear-search" aria-label="Clear search"><i class="fas fa-times-circle"></i></button>
-</div>
+    <div class="controls-bar">
+        <div class="progress">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="controls">
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-ctrl" id="playBtn" title="Play/Pause">▶</button>
+                <button class="btn-ctrl" id="muteBtn" title="Mute">🔊</button>
+            </div>
+            <div class="time-info">
+                <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+            </div>
+            <button class="btn-ctrl" id="fsBtn" title="Fullscreen">⛶</button>
+        </div>
+    </div>
 
-<select id="history-menu" aria-label="History navigation">
-<option value="">🕒 History...</option>
-</select>
-<input type="text" id="label-edit" placeholder="Rename..." style="display:none; width:200px;">
+    <div class="menu-backdrop" id="backdrop"></div>
+    <div class="menu" id="menu">
+        <div class="menu-header">
+            <h2 class="menu-title">Load Playlists</h2>
+            <button class="btn-close" id="closeBtn">✕</button>
+        </div>
 
-<button id="pop-out" class="hidden" title="Open in full page"><i class="fas fa-external-link-alt"></i> Full Page</button>
-</div>
+        <div class="menu-tabs">
+            <button class="tab-btn active" data-tab="files">Playlists</button>
+            <button class="tab-btn" data-tab="channels">Channels</button>
+        </div>
 
-<div class="iframe-loader" id="iframe-loader"></div>
-<iframe id="page-frame" name="content_frame"></iframe>
+        <div id="filesTab">
+            <div class="upload-area" id="uploadArea">
+                <div style="font-size: 32px;">📁</div>
+                <div class="upload-area-text">Drop M3U files here or click to upload</div>
+                <div class="upload-area-hint">.m3u, .m3u8 files supported</div>
+                <input type="file" id="fileInput" multiple accept=".m3u,.m3u8,text/plain">
+            </div>
+            <ul class="channel-list" id="playlistList"></ul>
+        </div>
 
-<div id="content-hub">
-<h1>⚡ Professional Control Center</h1>
-<p class="subtitle">Navigate · Search · Favorites · Keyboard Shortcuts</p>
+        <div id="channelsTab" class="hidden">
+            <div class="search-box">
+                <input type="text" id="searchBox" placeholder="Search channels...">
+            </div>
+            <ul class="channel-list" id="channelList"></ul>
+        </div>
+    </div>
 
-<details id="fav-section" class="hidden">
-<summary><i class="fas fa-star"></i> Favorites <span class="category-badge" id="fav-count">0</span></summary>
-<div id="fav-grid" class="grid"></div>
-</details>
-<div id="dynamic-content"></div>
-</div>
+    <script>
+        class ExpressPlayer {
+            constructor() {
+                this.video = document.getElementById('player');
+                this.playBtn = document.getElementById('playBtn');
+                this.muteBtn = document.getElementById('muteBtn');
+                this.fsBtn = document.getElementById('fsBtn');
+                this.progressFill = document.getElementById('progressFill');
+                this.currentTimeEl = document.getElementById('currentTime');
+                this.durationEl = document.getElementById('duration');
+                this.nowPlayingEl = document.getElementById('nowPlaying');
+                this.menuBtn = document.getElementById('menuBtn');
+                this.closeBtn = document.getElementById('closeBtn');
+                this.backdrop = document.getElementById('backdrop');
+                this.menu = document.getElementById('menu');
+                this.uploadArea = document.getElementById('uploadArea');
+                this.fileInput = document.getElementById('fileInput');
+                this.playlistList = document.getElementById('playlistList');
+                this.channelList = document.getElementById('channelList');
+                this.searchBox = document.getElementById('searchBox');
+                this.progress = document.querySelector('.progress');
 
-<div id="fallback-notice">
-<div>
-<h2>⚠️ Content Blocked</h2>
-<p>This site restricts embedding. Use the <strong>Full Page</strong> button to view directly.</p>
-<button onclick="openCurrentInTab()"><i class="fas fa-arrow-up-right-from-square"></i> Open in New Tab</button>
-<button onclick="this.parentElement.parentElement.style.display='none'">Close</button>
-</div>
-</div>
+                this.playlists = [];
+                this.allChannels = [];
+                this.filteredChannels = [];
+                this.currentPlaylist = null;
 
-<script>
-// ----- CATEGORY MAPPING & REGEX -----
-const categoryMap = {
-'news': {
-label: '📰 News & Media',
-icon: 'fas fa-newspaper',
-keywords: /news|infowars|ticker|feed|broadcast|cnn|fox|msnbc|oann?/i,
-color: '#ff6b6b'
-},
-'live-tv': {
-label: '📺 Live TV',
-icon: 'fas fa-tv',
-keywords: /live\s+tv|stream|channel|web\s+iptv|livenow|broadcast/i,
-color: '#4ecdc4'
-},
-'radio': {
-label: '🎙️ Radio & Podcasts',
-icon: 'fas fa-microphone',
-keywords: /radio|podcast|audio|no\s+agenda|oyster/i,
-color: '#a8e6cf'
-},
-'series': {
-label: '📺 Series & Shows',
-icon: 'fas fa-film',
-keywords: /season|series|episode|complete|show/i,
-color: '#ffd93d'
-},
-'movies': {
-label: '🎬 Movies',
-icon: 'fas fa-clapperboard',
-keywords: /movie|film|1950|1960|1970|1980|1990|2000|2010|2020|2025/i,
-color: '#ff8fab'
-},
-'general': {
-label: '🎯 General Content',
-icon: 'fas fa-th',
-keywords: null,
-color: '#b4a7d6'
-}
-};
+                this.init();
+            }
 
-const categorizeItem = (domain, title) => {
-if (!domain) domain = 'General';
-const normDomain = domain.toLowerCase().trim();
+            init() {
+                this.setupEventListeners();
+                this.loadSampleData();
+                this.renderPlaylists();
+            }
 
-for (const [key, cat] of Object.entries(categoryMap)) {
-if (key === 'general') continue;
-if (cat.keywords && (cat.keywords.test(normDomain) || cat.keywords.test(title))) {
-return key;
-}
-}
-return 'general';
-};
+            setupEventListeners() {
+                this.menuBtn.addEventListener('click', () => this.openMenu());
+                this.closeBtn.addEventListener('click', () => this.closeMenu());
+                this.backdrop.addEventListener('click', () => this.closeMenu());
 
-// ----- INJECTED CRAWL DATA -----
-const catalog = {
-"items": [
-{"domain": "News", "title": "News Multiviewer", "url": "https://www.liberty-express.org/news-channel-multiviewer.html"},
-{"domain": "Radio", "title": "Liberty Radio", "url": "https://www.liberty-express.org/libertyradio.html"},
-{"domain": "News", "title": "Infowars", "url": "https://www.liberty-express.org/news--infowars.html"},
-{"domain": "General", "title": "Westerns", "url": "https://www.liberty-express.org/big-western-channel-1.html"},
-{"domain": "General", "title": "NBC Propaganda", "url": "https://www.liberty-express.org/nbc-propaganda.html"},
-{"domain": "General", "title": "What's On", "url": "https://www.liberty-express.org/whats-playing-now2.html"},
-{"domain": "News", "title": "All News", "url": "https://www.liberty-express.org/all-news-page.html"},
-{"domain": "Live TV", "title": "Canada Propaganda", "url": "https://www.liberty-express.org/city-news-tv.html"},
-{"domain": "News", "title": "Crypto/Silver News", "url": "https://www.liberty-express.org/-gold--cryto-news.html"},
-{"domain": "General", "title": "Home", "url": "https://www.liberty-express.org"},
-{"domain": "General", "title": "Playing Also", "url": "https://www.liberty-express.org/playing-also.html"},
-{"domain": "News", "title": "Alex Jones Archive", "url": "https://www.liberty-express.org/infowars-archive-complete-episode-player.html"},
-{"domain": "General", "title": "Liberty Player", "url": "https://www.liberty-express.org/liberty-player.html"},
-{"domain": "General", "title": "Liberty Free Channel 1", "url": "https://www.liberty-express.org/liberty-free-channel-1.html"},
-{"domain": "General", "title": "Ancient Aliens", "url": "https://www.liberty-express.org/ancient-aliens1.html"},
-{"domain": "General", "title": "Playing Now", "url": "https://www.liberty-express.org/playing-now-3.html"},
-{"domain": "General", "title": "ADAM-12", "url": "https://www.liberty-express.org/adam-12.html"},
-{"domain": "Series", "title": "Barney Miller", "url": "https://www.liberty-express.org/barney-miller---complete.html"},
-{"domain": "Series", "title": "Bob Newhart Show", "url": "https://www.liberty-express.org/bob-newhart-show.html"},
-{"domain": "General", "title": "Black Sheep Squadron", "url": "https://www.liberty-express.org/black-sheep-squado.html"},
-{"domain": "General", "title": "Canada's Worst Driver", "url": "https://www.liberty-express.org/canadas-worst-driver.html"},
-{"domain": "Series", "title": "Cheers Season 1", "url": "https://www.liberty-express.org/cheers-mdash-season-1.html"},
-{"domain": "Series", "title": "Cheers Season 2", "url": "https://www.liberty-express.org/cheers-mdash-season-2.html"},
-{"domain": "General", "title": "Corner Gas", "url": "https://www.liberty-express.org/corner-gas.html"},
-{"domain": "General", "title": "Crime Zone", "url": "https://www.liberty-express.org/crime-zone.html"},
-{"domain": "Series", "title": "Hogans Heroes S01", "url": "https://www.liberty-express.org/hogans-heroes-s01.html"},
-{"domain": "Series", "title": "Hogans Heroes S02", "url": "https://www.liberty-express.org/hogans-heroes-s02.html"},
-{"domain": "General", "title": "Home Improvement", "url": "https://www.liberty-express.org/home-improvement.html"},
-{"domain": "General", "title": "Looney Tunes", "url": "https://www.liberty-express.org/loonie-tunes.html"},
-{"domain": "Series", "title": "Addams Family", "url": "https://www.liberty-express.org/the-addams-family-1964-1966.html"},
-{"domain": "Series", "title": "Beverly Hillbillies S1", "url": "https://www.liberty-express.org/the-beverly-hillbillies.html"},
-{"domain": "Series", "title": "Beverly Hillbillies S2", "url": "https://www.liberty-express.org/the-beverly-hillbillies---season-2.html"},
-{"domain": "General", "title": "Green Hornet", "url": "https://www.liberty-express.org/the-green-hornet.html"},
-{"domain": "General", "title": "Odd Couple 1970", "url": "https://www.liberty-express.org/the-odd-couple-1970.html"},
-{"domain": "Series", "title": "Fall Guy Season 1", "url": "https://www.liberty-express.org/the-fall-guy-season-1.html"},
-{"domain": "General", "title": "Law Man", "url": "https://www.liberty-express.org/the-law-man.html"},
-{"domain": "General", "title": "Grizzly Adams", "url": "https://www.liberty-express.org/the-life-and-times-of-grizzly-adams.html"},
-{"domain": "General", "title": "The Waltons", "url": "https://www.liberty-express.org/the-waltons.html"},
-{"domain": "Series", "title": "Jetsons S1-2", "url": "https://www.liberty-express.org/the-jettisons-season-1-2.html"},
-{"domain": "General", "title": "Petticoat Junction", "url": "https://www.liberty-express.org/petticoat-juntion.html"},
-{"domain": "Series", "title": "Sanford & Son S1", "url": "https://www.liberty-express.org/sanford-and-son-season-1.html"},
-{"domain": "General", "title": "Ice Road Truckers", "url": "https://www.liberty-express.org/ice-road-truckers1.html"},
-{"domain": "General", "title": "Deal or No Deal", "url": "https://www.liberty-express.org/i-deal.html"},
-{"domain": "General", "title": "Mayday: Air Disaster", "url": "https://www.liberty-express.org/mayday-air-disaster.html"},
-{"domain": "General", "title": "Modern Family", "url": "https://www.liberty-express.org/modern-family.html"},
-{"domain": "General", "title": "NYPD Blue", "url": "https://www.liberty-express.org/nypd-blue.html"},
-{"domain": "General", "title": "Taxi", "url": "https://www.liberty-express.org/taxi.html"},
-{"domain": "General", "title": "WKRP", "url": "https://www.liberty-express.org/wkrp.html"},
-{"domain": "Live TV", "title": "Who Knows TV Player", "url": "https://www.liberty-express.org/who-knows-tv---custom-player.html"},
-{"domain": "General", "title": "Liberty Classics 60s", "url": "https://www.liberty-express.org/liberty-classis-60s.html"},
-{"domain": "General", "title": "Liberty Classics 70s", "url": "https://www.liberty-express.org/liberty-classis-70s.html"},
-{"domain": "General", "title": "Liberty Classics 90s", "url": "https://www.liberty-express.org/liberty-classis-90s.html"},
-{"domain": "General", "title": "Police State", "url": "https://www.liberty-express.org/police-state.html"},
-{"domain": "Movies", "title": "1917 (2019)", "url": "https://www.liberty-express.org/1917-2019.html"},
-{"domain": "Movies", "title": "American Bombing", "url": "https://www.liberty-express.org/an-american-bombing.html"},
-{"domain": "Movies", "title": "Citizen X (2005)", "url": "https://www.liberty-express.org/citizen-x-2005.html"},
-{"domain": "Movies", "title": "Krakatoa: East of Java", "url": "https://www.liberty-express.org/krakatoa-east-of-java.html"},
-{"domain": "Movies", "title": "Big Combo (1955)", "url": "https://www.liberty-express.org/the-big-combo-1955.html"},
-{"domain": "Movies", "title": "Caine Mutiny Court Martial", "url": "https://www.liberty-express.org/the-caine-mutiny-court-martial.html"},
-{"domain": "Movies", "title": "Sixth Sense", "url": "https://www.liberty-express.org/the-sixth-sense.html"},
-{"domain": "Movies", "title": "Fifth Element", "url": "https://www.liberty-express.org/the-fith-element.html"},
-{"domain": "Movies", "title": "They Were Expendable", "url": "https://www.liberty-express.org/they-were-expendable.html"},
-{"domain": "Movies", "title": "Dirty Dozen", "url": "https://www.liberty-express.org/dirty-dozen.html"},
-{"domain": "Movies", "title": "Stanley & Livingstone", "url": "https://www.liberty-express.org/stanley-and-livingstone---twentieth-century-fox.html"},
-{"domain": "Movies", "title": "Hangar 18", "url": "https://www.liberty-express.org/hanger-18.html"},
-{"domain": "Movies", "title": "Hillbilly Elegy", "url": "https://www.liberty-express.org/hillbilly-elegy.html"},
-{"domain": "Movies", "title": "Kingsman: Secret Service", "url": "https://www.liberty-express.org/kingsman-the-secret-service.html"},
-{"domain": "Movies", "title": "King Arthur", "url": "https://www.liberty-express.org/king-arthur.html"},
-{"domain": "Movies", "title": "Mad Max 3", "url": "https://www.liberty-express.org/mad-max-3-beyond-thunderdome.html"},
-{"domain": "Movies", "title": "Never Cry Wolf", "url": "https://www.liberty-express.org/never-cry-wolf.html"},
-{"domain": "Movies", "title": "North & South", "url": "https://www.liberty-express.org/north--south.html"},
-{"domain": "Movies", "title": "Rocky Balboa", "url": "https://www.liberty-express.org/rocky-balboa.html"},
-{"domain": "Movies", "title": "Outrageous Fortune", "url": "https://www.liberty-express.org/outrageous-fortune.html"},
-{"domain": "Movies", "title": "Patton (1970)", "url": "https://www.liberty-express.org/patton-1970.html"},
-{"domain": "Movies", "title": "Papillon (1973)", "url": "https://www.liberty-express.org/papillon-1973-film.html"},
-{"domain": "Movies", "title": "Pirates (1950)", "url": "https://www.liberty-express.org/pirates-on-the-high-seas-1950.html"},
-{"domain": "Movies", "title": "Pay It Forward", "url": "https://www.liberty-express.org/pay-it-forward.html"},
-{"domain": "Movies", "title": "Pearl Harbor", "url": "https://www.liberty-express.org/pearl-harbor.html"},
-{"domain": "Movies", "title": "Herbie Goes to Monte Carlo", "url": "https://www.liberty-express.org/herbie-goes-to-monti-carlo.html"},
-{"domain": "Movies", "title": "Vacation", "url": "https://www.liberty-express.org/vacation.html"},
-{"domain": "Movies", "title": "Dog Day Afternoon", "url": "https://www.liberty-express.org/dog-day-afternoon-1975-cc.html"},
-{"domain": "Movies", "title": "U-571", "url": "https://www.liberty-express.org/u-571.html"},
-{"domain": "Movies", "title": "Somewhere in Time", "url": "https://www.liberty-express.org/some-where-in-time.html"},
-{"domain": "General", "title": "Ancient Aliens", "url": "https://www.liberty-express.org/ancient-aliens.html"},
-{"domain": "General", "title": "Alien Empire", "url": "https://www.liberty-express.org/alien-empire.html"},
-{"domain": "General", "title": "UAP/UFO Mystery", "url": "https://www.liberty-express.org/uap-ufo-mystery.html"},
-{"domain": "General", "title": "Climate Change", "url": "https://www.liberty-express.org/weatherfacts.html"},
-{"domain": "General", "title": "Geo-Engineering Watch", "url": "https://www.liberty-express.org/geo-engineering-watch.html"},
-{"domain": "General", "title": "Weather Watch", "url": "https://www.liberty-express.org/weather-watch.html"},
-{"domain": "General", "title": "Vaxxed Up", "url": "https://www.liberty-express.org/vaxxed-up.html"},
-{"domain": "General", "title": "Elite Airborne Forces", "url": "https://www.liberty-express.org/elite-airborne-special-forces-operations.html"},
-{"domain": "General", "title": "Evil Knievel", "url": "https://www.liberty-express.org/evil-knievel-daredevil.html"},
-{"domain": "General", "title": "Russian Space Program", "url": "https://www.liberty-express.org/russian-right-stuff.html"},
-{"domain": "General", "title": "Arctic Wilderness", "url": "https://www.liberty-express.org/arctic-wilderness-a-scientific-odyssey.html"},
-{"domain": "General", "title": "Life & Nature", "url": "https://www.liberty-express.org/life-nature.html"},
-{"domain": "General", "title": "Kennedy Assassination", "url": "https://www.liberty-express.org/the-kennedy-assassination.html"},
-{"domain": "General", "title": "Men Who Built America", "url": "https://www.liberty-express.org/the-men-who-built-america.html"},
-{"domain": "General", "title": "Yukon Passage", "url": "https://www.liberty-express.org/yukon-passage.html"},
-{"domain": "General", "title": "Smithsonian Channel", "url": "https://www.liberty-express.org/smithsonian-channel.html"},
-{"domain": "General", "title": "Long Road to War", "url": "https://www.liberty-express.org/the-long-road-to-war.html"},
-{"domain": "General", "title": "Transformation of America", "url": "https://www.liberty-express.org/transformation-of-america.html"},
-{"domain": "General", "title": "Amazon Review Killer", "url": "https://www.liberty-express.org/the-amazon-review-killer.html"},
-{"domain": "Series", "title": "Tucker Carlson Originals S1", "url": "https://www.liberty-express.org/tucker-carlson-originals---season-1.html"},
-{"domain": "Live TV", "title": "Liberty Live Stream", "url": "https://www.liberty-express.org/liberty-live-stream.html"},
-{"domain": "Live TV", "title": "Live TV Channels", "url": "https://www.liberty-express.org/live-tv-channels.html"},
-{"domain": "Live TV", "title": "Rumble Live News", "url": "https://www.liberty-express.org/rumble-live-news.html"},
-{"domain": "General", "title": "Rumble Player", "url": "https://www.liberty-express.org/rumble1.html"},
-{"domain": "Live TV", "title": "Rumble Live 2", "url": "https://www.liberty-express.org/rumble-live-2.html"},
-{"domain": "Live TV", "title": "Rumble Live 3", "url": "https://www.liberty-express.org/rumble-live-3.html"},
-{"domain": "Live TV", "title": "Liberty Free TV", "url": "https://www.liberty-express.org/liberty-free-tv.html"},
-{"domain": "Live TV", "title": "Web IPTV", "url": "https://www.liberty-express.org/web-iptv.html"},
-{"domain": "General", "title": "Playing Now 2", "url": "https://www.liberty-express.org/playing-now-2.html"},
-{"domain": "General", "title": "What's Playing", "url": "https://www.liberty-express.org/whats-playing.html"},
-{"domain": "General", "title": "OAN 2", "url": "https://www.liberty-express.org/oan-2.html"},
-{"domain": "General", "title": "OAN & Media", "url": "https://www.liberty-express.org/oan.html"},
-{"domain": "News", "title": "OAN News", "url": "https://www.liberty-express.org/oan-news.html"},
-{"domain": "News", "title": "Infowars Network", "url": "https://www.liberty-express.org/infowars-667835.html"},
-{"domain": "General", "title": "Barnum World", "url": "https://www.liberty-express.org/barnum-world.html"},
-{"domain": "General", "title": "Playing Now", "url": "https://www.liberty-express.org/whats-playing-now1.html"},
-{"domain": "News", "title": "News Now", "url": "https://www.liberty-express.org/newsnow.html"},
-{"domain": "General", "title": "Alex Jones Archive", "url": "https://www.liberty-express.org/alex-jones.html"},
-{"domain": "General", "title": "Special Events Gallery", "url": "https://www.liberty-express.org/special-events--video-gallery.html"},
-{"domain": "News", "title": "Infowars", "url": "https://www.liberty-express.org/infowars.html"},
-{"domain": "General", "title": "Alex Jones Today", "url": "https://www.liberty-express.org/alex-jones-today.html"},
-{"domain": "General", "title": "Infowars/RT News", "url": "https://www.liberty-express.org/bannedthetruth.html"},
-{"domain": "General", "title": "Alex Jones Predictions", "url": "https://www.liberty-express.org/alex-jones-predictions-2023.html"},
-{"domain": "General", "title": "Info Wars 1", "url": "https://www.liberty-express.org/info-wars-1.html"},
-{"domain": "General", "title": "Alex Jones on X", "url": "https://www.liberty-express.org/alex-jones-on-x.html"},
-{"domain": "News", "title": "Patriot News", "url": "https://www.liberty-express.org/patriot-news.html"},
-{"domain": "News", "title": "News Ticker", "url": "https://www.liberty-express.org/news-ticker-page.html"},
-{"domain": "General", "title": "Martian Chronicles", "url": "https://www.liberty-express.org/martian-chronicles.html"},
-{"domain": "General", "title": "Ancient Astronauts", "url": "https://www.liberty-express.org/the-case-of-the-ancient-astronauts.html"},
-{"domain": "General", "title": "Fox UFO Special", "url": "https://www.liberty-express.org/fox-ufo-special.html"},
-{"domain": "Live TV", "title": "Liberty Web TV", "url": "https://www.liberty-express.org/liberty-web-tv.html"},
-{"domain": "General", "title": "Liberty Classic", "url": "https://www.liberty-express.org/liberty-classic.html"},
-{"domain": "Movies", "title": "Secret Service (1969)", "url": "https://www.liberty-express.org/the-secret-service-1969.html"},
-{"domain": "Live TV", "title": "Best Years of Our Lives", "url": "https://www.liberty-express.org/best-years-of-our-lives.html"},
-{"domain": "Movies", "title": "Movie Collection Mix", "url": "https://www.liberty-express.org/movie-phzdttwex.html"},
-{"domain": "General", "title": "The Apprentice", "url": "https://www.liberty-express.org/the-apprentice.html"},
-{"domain": "General", "title": "The Odyssey", "url": "https://www.liberty-express.org/the-odyssey.html"},
-{"domain": "General", "title": "The Chosen", "url": "https://www.liberty-express.org/the-chosen.html"},
-{"domain": "General", "title": "Forensic Files", "url": "https://www.liberty-express.org/forensic-files.html"},
-{"domain": "Live TV", "title": "Free TV", "url": "https://www.liberty-express.org/free-tv.html"},
-{"domain": "Live TV", "title": "Getter Live Streams", "url": "https://www.liberty-express.org/getter-live-streams.html"},
-{"domain": "General", "title": "Playing Something?", "url": "https://www.liberty-express.org/playing-something.html"},
-{"domain": "News", "title": "Patriot 4 News", "url": "https://www.liberty-express.org/patriot-4-news.html"},
-{"domain": "General", "title": "Rumble 1", "url": "https://www.liberty-express.org/rumble-1.html"},
-{"domain": "General", "title": "TCN Network", "url": "https://www.liberty-express.org/tcn-network.html"},
-{"domain": "General", "title": "Truth Social Video", "url": "https://www.liberty-express.org/truth-social-video.html"},
-{"domain": "Live TV", "title": "My 3U TV", "url": "https://www.liberty-express.org/my-3u-tv.html"},
-{"domain": "Live TV", "title": "Movies TV Streamers", "url": "https://www.liberty-express.org/movies-tv-streamers.html"},
-{"domain": "Radio", "title": "Fox News Radio", "url": "https://www.liberty-express.org/fox-news-radio.html"},
-{"domain": "Radio", "title": "Fox-Infowars Radio", "url": "https://www.liberty-express.org/fox-infowars-radio.html"},
-{"domain": "General", "title": "Pop Music Videos", "url": "https://www.liberty-express.org/pop-music-videos.html"},
-{"domain": "General", "title": "Sunny Side Deep House", "url": "https://www.liberty-express.org/sunny-side-deep-house.html"},
-{"domain": "General", "title": "Bargrooves Deeper", "url": "https://www.liberty-express.org/bargrooves-deeper-30.html"},
-{"domain": "General", "title": "Beatport Top 100", "url": "https://www.liberty-express.org/beatport-top-100-2022.html"},
-{"domain": "General", "title": "Audio Player", "url": "https://www.liberty-express.org/audio-player.html"},
-{"domain": "Radio", "title": "No Agenda Radio", "url": "https://www.liberty-express.org/no-agendaoyster-radio1.html"},
-{"domain": "General", "title": "Rush Limbaugh", "url": "https://www.liberty-express.org/rush-limbaugh.html"},
-{"domain": "Radio", "title": "Patriot Radio", "url": "https://www.liberty-express.org/patriot-radio.html"},
-{"domain": "Radio", "title": "Podcasts", "url": "https://www.liberty-express.org/podcast.html"},
-{"domain": "General", "title": "Pod Casters", "url": "https://www.liberty-express.org/pod-casters.html"},
-{"domain": "Radio", "title": "Oyster Radio", "url": "https://www.liberty-express.org/no-agendaoyster-radio.html"},
-{"domain": "General", "title": "Search No Agenda", "url": "https://www.liberty-express.org/search-no-agenda.html"},
-{"domain": "General", "title": "Audio Books", "url": "https://www.liberty-express.org/audio-books.html"},
-{"domain": "General", "title": "Patriot Follow Links", "url": "https://www.liberty-express.org/patriot-follow-links.html"},
-{"domain": "General", "title": "Grok Likes Legalman", "url": "https://www.liberty-express.org/grok-likes-legalman.html"},
-{"domain": "General", "title": "Tucker on X", "url": "https://www.liberty-express.org/tucker-on-x.html"},
-{"domain": "General", "title": "X Heroes", "url": "https://www.liberty-express.org/x-heroes.html"},
-{"domain": "General", "title": "Charlie Kirk Memories", "url": "https://www.liberty-express.org/charlie-kirk-memories.html"},
-{"domain": "General", "title": "Jeff Kuhner Country", "url": "https://www.liberty-express.org/jeff-kuhner-country1.html"},
-{"domain": "General", "title": "Legalman The Quash", "url": "https://www.liberty-express.org/legalman-the-quash.html"},
-{"domain": "News", "title": "News Feed", "url": "https://www.liberty-express.org/just-news-feed-ugly-but-works.html"},
-{"domain": "General", "title": "Body Language", "url": "https://www.liberty-express.org/body-language.html"},
-{"domain": "General", "title": "Liberty Socials", "url": "https://www.liberty-express.org/liberty-socials.html"},
-{"domain": "General", "title": "Horse Racing Global", "url": "https://www.liberty-express.org/horse.html"},
-{"domain": "General", "title": "Backup Blogger", "url": "https://www.liberty-express.org/back-up-blogger-page.html"},
-{"domain": "General", "title": "Find Everything", "url": "https://www.liberty-express.org/find-everything-here.html"},
-{"domain": "News", "title": "Fox News Audio", "url": "https://www.liberty-express.org/fox-news-audio.html"},
-{"domain": "Radio", "title": "And We Know Podcast", "url": "https://www.liberty-express.org/and-we-know-podcast.html"},
-{"domain": "News", "title": "Listed News Sites", "url": "https://www.liberty-express.org/listed-news-sites.html"},
-{"domain": "News", "title": "Combined News Feed", "url": "https://www.liberty-express.org/combined-news-feed.html"},
-{"domain": "News", "title": "News Ticker", "url": "https://www.liberty-express.org/all-news-ticker.html"},
-{"domain": "General", "title": "What's Playing Now", "url": "https://www.liberty-express.org/whats-playing-now.html"},
-{"domain": "General", "title": "Charlie Kirk Tribute", "url": "https://www.liberty-express.org/tribute-page-for-charlie-kirk.html"},
-{"domain": "General", "title": "RIIFT", "url": "https://www.liberty-express.org/riift.html"},
-{"domain": "General", "title": "FrankSpeech Social", "url": "https://www.liberty-express.org/frankspeech-social.html"},
-{"domain": "News", "title": "News Spread", "url": "https://www.liberty-express.org/news-spread.html"},
-{"domain": "General", "title": "Traffic Map", "url": "https://www.liberty-express.org/west-coast-traffic-map.html"},
-{"domain": "General", "title": "RT Documentaries", "url": "https://www.liberty-express.org/rt-documentaries.html"},
-{"domain": "General", "title": "The First", "url": "https://www.liberty-express.org/the-first-2.html"},
-{"domain": "General", "title": "8-Panel YouTube", "url": "https://www.liberty-express.org/8-panel-you-tube.html"},
-{"domain": "Live TV", "title": "Patriot TV", "url": "https://www.liberty-express.org/patriot-tv.html"},
-{"domain": "General", "title": "Liberty Blogs", "url": "https://www.liberty-express.org/memory.html"},
-{"domain": "General", "title": "Digital Tyranny", "url": "https://www.liberty-express.org/digitaltyranny.html"},
-{"domain": "General", "title": "Let's Go Brandon", "url": "https://www.liberty-express.org/brandon.html"},
-{"domain": "General", "title": "Hybrid Humans", "url": "https://www.liberty-express.org/hybrid-humans.html"},
-{"domain": "General", "title": "Clot Shots", "url": "https://www.liberty-express.org/pandemic.html"},
-{"domain": "General", "title": "Clot Shots Video Archive", "url": "https://www.liberty-express.org/clot-shots-video-archive.html"},
-{"domain": "General", "title": "Real Anthony Fauci", "url": "https://www.liberty-express.org/drfraud.html"},
-{"domain": "General", "title": "Real Dr Fauci", "url": "https://www.liberty-express.org/the-real-dr-fauci.html"},
-{"domain": "Live TV", "title": "Truth in Movies", "url": "https://www.liberty-express.org/truth-in-movies-and-tv-lies-on-the-news.html"},
-{"domain": "News", "title": "Current & Past News", "url": "https://www.liberty-express.org/current-and-past-news-events.html"},
-{"domain": "General", "title": "Blog", "url": "https://www.liberty-express.org/blog.html"},
-{"domain": "General", "title": "Biden Crime Family 1", "url": "https://www.liberty-express.org/biden-crime-family-1.html"},
-{"domain": "General", "title": "Biden Crime Family 2", "url": "https://www.liberty-express.org/biden-crime-family-2.html"},
-{"domain": "General", "title": "Biden Crimes", "url": "https://www.liberty-express.org/biden-crimes.html"},
-{"domain": "General", "title": "Russia Hoax Exposed", "url": "https://www.liberty-express.org/russia-hoax-exposed.html"},
-{"domain": "General", "title": "CIA are the Virus", "url": "https://www.liberty-express.org/cia-are-the-virus.html"},
-{"domain": "General", "title": "St James Island", "url": "https://www.liberty-express.org/st-james-island-the-elites-chasing-youth.html"},
-{"domain": "News", "title": "Censored News", "url": "https://www.liberty-express.org/censored-news.html"},
-{"domain": "General", "title": "Justin Trudeau Dictator", "url": "https://www.liberty-express.org/justin-trudeau-dictator.html"},
-{"domain": "General", "title": "Border Hawk Cams", "url": "https://www.liberty-express.org/border-hawk-cams.html"},
-{"domain": "General", "title": "Border Hawk", "url": "https://www.liberty-express.org/border-hawk.html"},
-{"domain": "General", "title": "RNC 2024", "url": "https://www.liberty-express.org/2024-republican-national-convention.html"},
-{"domain": "General", "title": "Navigate", "url": "https://www.liberty-express.org/navigate.html"},
-{"domain": "Movies", "title": "How Movies Are Made", "url": "https://www.liberty-express.org/how-movies-are-made.html"},
-{"domain": "General", "title": "Playing Now 3", "url": "https://www.liberty-express.org/playing-now-31.html"},
-{"domain": "General", "title": "Chosen Adventures", "url": "https://www.liberty-express.org/the-chosen-adventures.html"},
-{"domain": "General", "title": "Rumble Player", "url": "https://www.liberty-express.org/rumble-player.html"},
-{"domain": "General", "title": "Variety Television", "url": "https://www.liberty-express.org/variety-television.html"},
-{"domain": "General", "title": "Alex Jones & Picks", "url": "https://www.liberty-express.org/alex-jones-and-editors-picks.html"},
-{"domain": "General", "title": "Crime Classics 1", "url": "https://www.liberty-express.org/crime-classics-1.html"},
-{"domain": "Movies", "title": "Liberty Free Movies", "url": "https://www.liberty-express.org/liberty-free-movies.html"},
-{"domain": "General", "title": "Liberty Free Channel 1", "url": "https://www.liberty-express.org/liberty-free-channel-11.html"},
-{"domain": "General", "title": "Liberty Free Channel 2", "url": "https://www.liberty-express.org/liberty-free-channel-2.html"},
-{"domain": "General", "title": "Liberty Free Channel 3", "url": "https://www.liberty-express.org/liberty-free-channel-3.html"},
-{"domain": "General", "title": "Alex Jones Everything", "url": "https://www.liberty-express.org/alex-jones-evertything.html"},
-{"domain": "General", "title": "Project Veritas", "url": "https://www.liberty-express.org/project-veritos.html"},
-{"domain": "General", "title": "Classic Rewinds", "url": "https://www.liberty-express.org/classic-rewinds.html"},
-{"domain": "News", "title": "Rumble News", "url": "https://www.liberty-express.org/rumble-news1.html"},
-{"domain": "Movies", "title": "Classic Movies", "url": "https://www.liberty-express.org/classic-movies.html"},
-{"domain": "Movies", "title": "Stanley Kubrick Films", "url": "https://www.liberty-express.org/filmography-stanley-kubrick.html"},
-{"domain": "Movies", "title": "Ken Russell Films", "url": "https://www.liberty-express.org/filmography-of-ken-russell.html"},
-{"domain": "General", "title": "Nephilim Giants", "url": "https://www.liberty-express.org/the-nephilim-giants.html"},
-{"domain": "General", "title": "Monster Squad", "url": "https://www.liberty-express.org/monster-squad.html"},
-{"domain": "General", "title": "All Dogs Go to Heaven", "url": "https://www.liberty-express.org/all-dogs-go-to-heaven.html"},
-{"domain": "General", "title": "Mr Rogers Neighborhood", "url": "https://www.liberty-express.org/mr-rogers-neighborhood.html"},
-{"domain": "General", "title": "Animated VHS & DVD", "url": "https://www.liberty-express.org/animated-vhs-and-dvd.html"},
-{"domain": "General", "title": "Walt Disney Presents", "url": "https://www.liberty-express.org/walt-disney-presents.html"},
-{"domain": "General", "title": "Kids Sing Along", "url": "https://www.liberty-express.org/kids-sing-along-vhs-and-dvd.html"},
-{"domain": "General", "title": "Jetsons", "url": "https://www.liberty-express.org/the-jettisons.html"},
-{"domain": "General", "title": "Banacek", "url": "https://www.liberty-express.org/banacek.html"},
-{"domain": "General", "title": "Looney Tunes Collectors Ed", "url": "https://www.liberty-express.org/looney-tunes-the-collectors-edition.html"},
-{"domain": "General", "title": "Little Rascals Colorized", "url": "https://www.liberty-express.org/the-little-rascals-colorized.html"},
-{"domain": "General", "title": "Sci-Fi Channel", "url": "https://www.liberty-express.org/sci-fi-channel.html"},
-{"domain": "General", "title": "On the Buses", "url": "https://www.liberty-express.org/on-the-busses.html"},
-{"domain": "General", "title": "Laurel & Hardy Colorized", "url": "https://www.liberty-express.org/laurel-and-hardy-colorized.html"},
-{"domain": "Live TV", "title": "SNL Best of VHS", "url": "https://www.liberty-express.org/the-best-of-saturday-night-live-vhs.html"},
-{"domain": "General", "title": "50 Greatest Cartoons", "url": "https://www.liberty-express.org/50-of-the-greatest-cartoons.html"},
-{"domain": "General", "title": "Schedule Flow", "url": "https://www.liberty-express.org/schedule-flow.html"},
-{"domain": "Live TV", "title": "Fox Live News 24/7", "url": "https://www.liberty-express.org/live-news-livenow-fox-247-live-stream.html"},
-{"domain": "General", "title": "Cheyenne", "url": "https://www.liberty-express.org/cheyenne.html"},
-{"domain": "General", "title": "Barrymore", "url": "https://www.liberty-express.org/119809119834119851119851119858119846119848119851119838.html"},
-{"domain": "General", "title": "The Persuaders", "url": "https://www.liberty-express.org/the-persuaders.html"},
-{"domain": "General", "title": "British Classics", "url": "https://www.liberty-express.org/british-classics.html"},
-{"domain": "General", "title": "Winnie the Pooh", "url": "https://www.liberty-express.org/winnie-the-pooh.html"},
-{"domain": "General", "title": "Father Ted", "url": "https://www.liberty-express.org/father-ted.html"},
-{"domain": "General", "title": "Recess Christmas", "url": "https://www.liberty-express.org/recess-christmas.html"},
-{"domain": "General", "title": "Hogans Heroes", "url": "https://www.liberty-express.org/hogans-heros.html"},
-{"domain": "General", "title": "East Side: West Side", "url": "https://www.liberty-express.org/east-side-west-side.html"},
-{"domain": "General", "title": "The Prisoner", "url": "https://www.liberty-express.org/the-prisoner.html"},
-{"domain": "General", "title": "Hamish Macbeth", "url": "https://www.liberty-express.org/hamish-macbeth.html"},
-{"domain": "General", "title": "Homicide", "url": "https://www.liberty-express.org/homicide.html"},
-{"domain": "Movies", "title": "Inferno (1953)", "url": "https://www.liberty-express.org/inferno--1953.html"},
-{"domain": "General", "title": "Dad's Army", "url": "https://www.liberty-express.org/dads-army.html"},
-{"domain": "General", "title": "My Family", "url": "https://www.liberty-express.org/my-family.html"},
-{"domain": "General", "title": "British Music Videos", "url": "https://www.liberty-express.org/british-music-videos.html"},
-{"domain": "General", "title": "Rising Damp", "url": "https://www.liberty-express.org/rising-damp.html"},
-{"domain": "General", "title": "Red Dwarf", "url": "https://www.liberty-express.org/red-dwarf.html"},
-{"domain": "General", "title": "Come Fly With Me", "url": "https://www.liberty-express.org/come-fly-with-me.html"},
-{"domain": "General", "title": "Blackadder", "url": "https://www.liberty-express.org/black-adder.html"},
-{"domain": "General", "title": "Western Classics", "url": "https://www.liberty-express.org/western-classics.html"},
-{"domain": "General", "title": "Gunsmoke", "url": "https://www.liberty-express.org/gunsmoke.html"},
-{"domain": "General", "title": "New Page", "url": "https://www.liberty-express.org/new-page.html"},
-{"domain": "General", "title": "Fall of Maya Kings", "url": "https://www.liberty-express.org/fall-of-the-maya-kings.html"},
-{"domain": "Movies", "title": "Breaker Morant (2013)", "url": "https://www.liberty-express.org/breaker-morant-the-retrial-2013.html"},
-{"domain": "General", "title": "Midnight Mission", "url": "https://www.liberty-express.org/midnight-mission.html"},
-{"domain": "General", "title": "Presidents Book of Secrets", "url": "https://www.liberty-express.org/the-presidents-book-of-secrets-2010.html"},
-{"domain": "Movies", "title": "Movie Orgy (1968)", "url": "https://www.liberty-express.org/the-movie-orgy-1968.html"},
-{"domain": "General", "title": "Murder in Monaco (2025)", "url": "https://www.liberty-express.org/murder-in-monaco-2025.html"},
-{"domain": "General", "title": "Secrets We Bury (2025)", "url": "https://www.liberty-express.org/the-secrets-we-bury-2025.html"},
-{"domain": "Movies", "title": "Coward of County (1981)", "url": "https://www.liberty-express.org/coward-of-the-county-1981.html"},
-{"domain": "General", "title": "Royal Arctic Challenge", "url": "https://www.liberty-express.org/steve-backshalls-royal-arctic-challenge-2025.html"},
-{"domain": "General", "title": "Night Before Christmas", "url": "https://www.liberty-express.org/the-night-before-christmas-1933.html"},
-{"domain": "General", "title": "Noah Piugattuk", "url": "https://www.liberty-express.org/one-day-in-the-life-of-noah-piugattuk.html"},
-{"domain": "General", "title": "Precious Leader Woman", "url": "https://www.liberty-express.org/precious-leader-woman.html"},
-{"domain": "General", "title": "Make or Break Holiday", "url": "https://www.liberty-express.org/a-make-or-break-holiday.html"},
-{"domain": "General", "title": "Waiting for Harry", "url": "https://www.liberty-express.org/waiting-for-harry.html"},
-{"domain": "General", "title": "Elway", "url": "https://www.liberty-express.org/elway.html"},
-{"domain": "General", "title": "Bang", "url": "https://www.liberty-express.org/bang.html"},
-{"domain": "Series", "title": "Hunting Season (2025)", "url": "https://www.liberty-express.org/hunting-season-2025.html"},
-{"domain": "General", "title": "Unholy Trinity (2025)", "url": "https://www.liberty-express.org/the-unholy-trinity-2025.html"},
-{"domain": "General", "title": "Dead Diamond (2025)", "url": "https://www.liberty-express.org/reflection-in-a-dead-diamond-2025.html"},
-{"domain": "General", "title": "Death Valley Days", "url": "https://www.liberty-express.org/death-valley-days.html"},
-{"domain": "General", "title": "Rawhide", "url": "https://www.liberty-express.org/rawhide.html"},
-{"domain": "General", "title": "Wyatt Earp Legend", "url": "https://www.liberty-express.org/120139120153120150-120131120154120151120150-120120120159120149-120131120150120152120150120159120149-120134120151-120142120170120146120165120165-120124120146120163120161.html"},
-{"domain": "General", "title": "Control Hub", "url": "https://www.liberty-express.org/control-hub1.html"},
-{"domain": "Movies", "title": "Dr Strangelove", "url": "https://www.liberty-express.org/dr-strangelove.html"},
-{"domain": "General", "title": "Tripping the Rift", "url": "https://www.liberty-express.org/tripping-the-rift.html"},
-{"domain": "General", "title": "Benny Hill Show", "url": "https://www.liberty-express.org/the-benny-hill-show.html"},
-{"domain": "General", "title": "Epoch Times (2022)", "url": "https://www.liberty-express.org/the-epoch-times-2022.html"},
-{"domain": "General", "title": "Wormwood", "url": "https://www.liberty-express.org/wormwood.html"},
-{"domain": "General", "title": "Get Smart", "url": "https://www.liberty-express.org/get-smart.html"},
-{"domain": "General", "title": "Judge Roy Bean", "url": "https://www.liberty-express.org/judge-roy-bean.html"},
-{"domain": "General", "title": "Robinson Crusoe Clipper Island", "url": "https://www.liberty-express.org/robinson-crusoe-of-clipper-island.html"},
-{"domain": "General", "title": "Lost City of Jungle", "url": "https://www.liberty-express.org/lost-city-of-the-jungle.html"},
-{"domain": "General", "title": "Classic Documentaries", "url": "https://www.liberty-express.org/classic-documentaries.html"},
-{"domain": "General", "title": "Columbo", "url": "https://www.liberty-express.org/columbo.html"},
-{"domain": "General", "title": "Runaway", "url": "https://www.liberty-express.org/runaway.html"},
-{"domain": "General", "title": "Tales of Wells Fargo", "url": "https://www.liberty-express.org/tales-of-wells-fargo.html"},
-{"domain": "General", "title": "Crime Classics 2", "url": "https://www.liberty-express.org/crime-classics-2.html"},
-{"domain": "Live TV", "title": "WE TV Player", "url": "https://www.liberty-express.org/we-tv-player.html"},
-{"domain": "Live TV", "title": "WE TV Custom Playlist", "url": "https://www.liberty-express.org/we-tv-add-your-own-playlist.html"},
-{"domain": "Live TV", "title": "Wanted Dead or Alive", "url": "https://www.liberty-express.org/wanted-dead-or-alive.html"},
-{"domain": "Movies", "title": "Ma & Pa Kettle Movies", "url": "https://www.liberty-express.org/ma-and-pa-kettle-movies.html"},
-{"domain": "News", "title": "Newsnation Newsmax", "url": "https://www.liberty-express.org/newsnation-newsmax-infowars.html"},
-{"domain": "Live TV", "title": "Australia Samsung TV", "url": "https://www.liberty-express.org/australia-samsung-tv.html"},
-{"domain": "General", "title": "Text Meme Builder", "url": "https://www.liberty-express.org/text-meme-builder.html"},
-{"domain": "General", "title": "Patriot Resources", "url": "https://www.liberty-express.org/patriot-network--resources.html"},
-{"domain": "General", "title": "Milton Cooper", "url": "https://www.liberty-express.org/milton-william-bill-cooper.html"},
-{"domain": "General", "title": "Canada Propaganda", "url": "https://www.liberty-express.org/canada-propaganda.html"},
-{"domain": "General", "title": "Link Page", "url": "https://www.liberty-express.org/link-page.html"},
-{"domain": "Live TV", "title": "I Shouldn't Be Alive", "url": "https://www.liberty-express.org/i-shouldnt-be-alive.html"},
-{"domain": "General", "title": "Babylon 5", "url": "https://www.liberty-express.org/babylon-5.html"},
-{"domain": "General", "title": "Rush Limbaugh (1992-96)", "url": "https://www.liberty-express.org/rush-limbaugh--1992ndash1996.html"},
-{"domain": "General", "title": "Phil Donahue Show", "url": "https://www.liberty-express.org/the-phil-donahue-show.html"},
-{"domain": "Movies", "title": "Good Old Movies", "url": "https://www.liberty-express.org/good-old-movies.html"},
-{"domain": "Movies", "title": "Filmography Collection", "url": "https://www.liberty-express.org/filmography-collection.html"},
-{"domain": "General", "title": "BC Cams", "url": "https://www.liberty-express.org/bc-cams.html"},
-{"domain": "Live TV", "title": "Classic TV Collection", "url": "https://www.liberty-express.org/classic-tv-collection.html"},
-{"domain": "General", "title": "John Wayne Collection", "url": "https://www.liberty-express.org/john-wayne-collection.html"},
-{"domain": "General", "title": "Beckham & Makenzie", "url": "https://www.liberty-express.org/beckham-and-makenzie.html"},
-{"domain": "General", "title": "Torchwood", "url": "https://www.liberty-express.org/torchwood.html"}
-]
-};
+                document.querySelectorAll('[data-tab]').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+                });
 
-// ----- ORGANIZE ITEMS -----
-const organized = {};
-for (const cat of Object.keys(categoryMap)) {
-organized[cat] = [];
-}
+                this.uploadArea.addEventListener('click', () => this.fileInput.click());
+                this.uploadArea.addEventListener('dragover', (e) => e.preventDefault());
+                this.uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
+                this.fileInput.addEventListener('change', (e) => this.handleFiles(e));
 
-for (const item of catalog.items) {
-const category = categorizeItem(item.domain, item.title);
-organized[category].push(item);
-}
+                this.playBtn.addEventListener('click', () => this.togglePlay());
+                this.muteBtn.addEventListener('click', () => this.toggleMute());
+                this.fsBtn.addEventListener('click', () => this.toggleFullscreen());
+                this.progress.addEventListener('click', (e) => this.seek(e));
+                this.searchBox.addEventListener('input', (e) => this.filterChannels(e.target.value));
 
-// ----- RENDER SECTIONS -----
-const hub = document.getElementById('dynamic-content');
-for (const [catKey, items] of Object.entries(organized)) {
-if (items.length === 0) continue;
+                this.video.addEventListener('play', () => this.updatePlayBtn());
+                this.video.addEventListener('pause', () => this.updatePlayBtn());
+                this.video.addEventListener('timeupdate', () => this.updateProgress());
+                this.video.addEventListener('durationchange', () => this.updateDuration());
 
-const cat = categoryMap[catKey];
-const details = document.createElement('details');
-details.className = 'category-section';
+                document.addEventListener('keydown', (e) => this.handleKeys(e));
+            }
 
-const summary = document.createElement('summary');
-summary.innerHTML = `<i class="${cat.icon}"></i> ${cat.label} <span class="category-badge">${items.length}</span>`;
-details.appendChild(summary);
+            loadSampleData() {
+                this.playlists = [
+                    {
+                        name: 'Sample Movies',
+                        channels: [
+                            { name: 'Big Buck Bunny', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+                            { name: 'Elephants Dream', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/ElephantsDream.mp4' }
+                        ]
+                    }
+                ];
+                this.rebuildChannels();
+            }
 
-const grid = document.createElement('div');
-grid.className = 'grid';
+            rebuildChannels() {
+                this.allChannels = [];
+                this.playlists.forEach(pl => this.allChannels.push(...pl.channels));
+                this.filteredChannels = [...this.allChannels];
+            }
 
-for (const item of items) {
-const itemEl = document.createElement('div');
-itemEl.className = 'item';
-itemEl.innerHTML = `
-<div class="item-header">
-<i class="fas fa-play-circle thumb-icon"></i>
-<div class="item-content">
-<a href="javascript:void(0)" onclick="loadURL('${item.url.replace(/'/g, "\\'")}'); return false;">${item.title}</a>
-</div>
-<div class="star" onclick="toggleStar(this, '${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')" title="Add to favorites">
-<i class="fas fa-star"></i>
-</div>
-</div>
-<div class="tags">
-<span class="tag">${item.domain}</span>
-</div>
-`;
-grid.appendChild(itemEl);
-}
+            renderPlaylists() {
+                this.playlistList.innerHTML = '';
+                if (this.playlists.length === 0) {
+                    this.playlistList.innerHTML = '<div class="empty-msg"><div class="empty-icon">📂</div><div class="empty-title">No playlists</div></div>';
+                    return;
+                }
 
-details.appendChild(grid);
-hub.appendChild(details);
-}
+                this.playlists.forEach(pl => {
+                    const li = document.createElement('li');
+                    li.className = 'channel-item' + (pl === this.currentPlaylist ? ' active' : '');
+                    li.innerHTML = `<div style="flex: 1;"><div class="channel-name">${pl.name}</div><div class="channel-url">${pl.channels.length} channels</div></div>`;
+                    li.addEventListener('click', () => this.selectPlaylist(pl));
+                    this.playlistList.appendChild(li);
+                });
+            }
 
-// ----- KEYBOARD & HISTORY -----
-const history = [];
-let historyIndex = -1;
+            renderChannels() {
+                this.channelList.innerHTML = '';
+                const channels = this.filteredChannels;
 
-document.getElementById('home-btn').addEventListener('click', () => location.hash = '#');
-document.getElementById('back-btn').addEventListener('click', () => {
-if (historyIndex > 0) {
-historyIndex--;
-loadURL(history[historyIndex], false);
-}
-});
-document.getElementById('fwd-btn').addEventListener('click', () => {
-if (historyIndex < history.length - 1) {
-historyIndex++;
-loadURL(history[historyIndex], false);
-}
-});
-document.getElementById('refresh-btn').addEventListener('click', () => location.reload());
-document.getElementById('go-btn').addEventListener('click', () => {
-const val = document.getElementById('page-menu').value;
-if (val) loadURL(catalog.items.find(i => i.url.includes(val))?.url || '');
-});
+                if (channels.length === 0) {
+                    this.channelList.innerHTML = '<div class="empty-msg"><div class="empty-icon">📺</div><div class="empty-title">No channels</div></div>';
+                    return;
+                }
 
-document.getElementById('search-input').addEventListener('input', (e) => {
-const query = e.target.value.toLowerCase();
-document.querySelectorAll('.category-section').forEach(section => {
-let visible = 0;
-section.querySelectorAll('.item').forEach(item => {
-const match = item.textContent.toLowerCase().includes(query);
-item.classList.toggle('hidden', !match);
-if (match) visible++;
-});
-section.classList.toggle('hidden', visible === 0);
-});
-document.getElementById('clear-search').style.display = query ? 'block' : 'none';
-});
+                channels.forEach((ch, idx) => {
+                    const li = document.createElement('li');
+                    li.className = 'channel-item';
+                    li.innerHTML = `
+                        <div class="channel-number">${idx + 1}</div>
+                        <div class="channel-info">
+                            <div class="channel-name">${ch.name}</div>
+                            <div class="channel-url">${ch.url.substring(0, 45)}...</div>
+                        </div>
+                    `;
+                    li.addEventListener('click', () => this.playChannel(ch));
+                    this.channelList.appendChild(li);
+                });
+            }
 
-document.getElementById('clear-search').addEventListener('click', () => {
-document.getElementById('search-input').value = '';
-document.getElementById('search-input').dispatchEvent(new Event('input'));
-});
+            handleDrop(e) {
+                e.preventDefault();
+                Array.from(e.dataTransfer.files).forEach(f => this.readFile(f));
+            }
 
-document.addEventListener('keydown', (e) => {
-if (e.altKey) {
-if (e.key === 'h') document.getElementById('home-btn').click();
-if (e.key === 'r') document.getElementById('refresh-btn').click();
-if (e.key === 'c') document.getElementById('clear-history-btn').click();
-}
-});
+            handleFiles(e) {
+                Array.from(e.target.files).forEach(f => this.readFile(f));
+                this.fileInput.value = '';
+            }
 
-function loadURL(url, addToHistory = true) {
-document.getElementById('page-frame').src = url;
-document.getElementById('page-frame').style.display = 'block';
-document.getElementById('content-hub').style.display = 'none';
-document.getElementById('pop-out').classList.remove('hidden');
+            readFile(file) {
+                if (!file.name.match(/\.(m3u|m3u8)$/i)) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const pl = this.parseM3U(file.name, e.target.result);
+                    this.playlists.push(pl);
+                    this.rebuildChannels();
+                    this.renderPlaylists();
+                    this.renderChannels();
+                };
+                reader.readAsText(file);
+            }
 
-if (addToHistory) {
-history.splice(historyIndex + 1);
-history.push(url);
-historyIndex = history.length - 1;
-}
+            parseM3U(filename, content) {
+                const channels = [];
+                let title = '';
+                content.split('\n').forEach(line => {
+                    line = line.trim();
+                    if (line.startsWith('#EXTINF:')) {
+                        const match = line.match(/,(.+)$/);
+                        title = match ? match[1] : 'Unknown';
+                    } else if (line && !line.startsWith('#') && title) {
+                        channels.push({ name: title, url: line });
+                        title = '';
+                    }
+                });
+                return { name: filename.replace(/\.(m3u|m3u8)$/i, ''), channels };
+            }
 
-document.getElementById('back-btn').disabled = historyIndex <= 0;
-document.getElementById('fwd-btn').disabled = historyIndex >= history.length - 1;
-}
+            selectPlaylist(pl) {
+                this.currentPlaylist = pl;
+                this.filteredChannels = [...pl.channels];
+                this.switchTab('channels');
+                this.renderPlaylists();
+                this.renderChannels();
+            }
 
-function openCurrentInTab() {
-if (document.getElementById('page-frame').src) {
-window.open(document.getElementById('page-frame').src, '_blank');
-}
-}
+            filterChannels(q) {
+                const channels = this.currentPlaylist ? this.currentPlaylist.channels : this.allChannels;
+                this.filteredChannels = channels.filter(ch =>
+                    ch.name.toLowerCase().includes(q.toLowerCase()) ||
+                    ch.url.toLowerCase().includes(q.toLowerCase())
+                );
+                this.renderChannels();
+            }
 
-document.getElementById('pop-out').addEventListener('click', openCurrentInTab);
+            playChannel(ch) {
+                this.nowPlayingEl.textContent = ch.name;
+                this.video.src = ch.url;
+                this.video.play().catch(e => console.error('Play error:', e));
+                this.closeMenu();
+                this.updatePlayBtn();
+            }
 
-let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            switchTab(tab) {
+                document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+                document.getElementById('filesTab').classList.toggle('hidden', tab !== 'files');
+                document.getElementById('channelsTab').classList.toggle('hidden', tab !== 'channels');
+                if (tab === 'channels') this.searchBox.focus();
+            }
 
-function toggleStar(el, url, title) {
-const isActive = el.classList.toggle('active');
-if (isActive) {
-favorites.push({url, title});
-} else {
-favorites = favorites.filter(f => f.url !== url);
-}
-localStorage.setItem('favorites', JSON.stringify(favorites));
-updateFavSection();
-}
+            openMenu() {
+                this.menu.classList.add('open');
+                this.backdrop.classList.add('open');
+            }
 
-function updateFavSection() {
-const favSection = document.getElementById('fav-section');
-const favGrid = document.getElementById('fav-grid');
-favGrid.innerHTML = '';
+            closeMenu() {
+                this.menu.classList.remove('open');
+                this.backdrop.classList.remove('open');
+            }
 
-if (favorites.length === 0) {
-favSection.classList.add('hidden');
-return;
-}
+            togglePlay() {
+                if (!this.video.src) { this.openMenu(); return; }
+                this.video.paused ? this.video.play() : this.video.pause();
+            }
 
-favSection.classList.remove('hidden');
-document.getElementById('fav-count').textContent = favorites.length;
+            updatePlayBtn() {
+                this.playBtn.textContent = this.video.paused ? '▶' : '⏸';
+            }
 
-for (const fav of favorites) {
-const item = document.createElement('div');
-item.className = 'item active';
-item.innerHTML = `
-<div class="item-header">
-<i class="fas fa-star thumb-icon" style="color: #ffdd57;"></i>
-<div class="item-content">
-<a href="javascript:void(0)" onclick="loadURL('${fav.url.replace(/'/g, "\\'")}'); return false;">${fav.title}</a>
-</div>
-<div class="star active" onclick="toggleStar(this, '${fav.url.replace(/'/g, "\\'")}', '${fav.title.replace(/'/g, "\\'")}')" title="Remove from favorites">
-<i class="fas fa-star"></i>
-</div>
-</div>
-`;
-favGrid.appendChild(item);
-}
-}
+            toggleMute() {
+                this.video.muted = !this.video.muted;
+                this.muteBtn.textContent = this.video.muted ? '🔇' : '🔊';
+            }
 
-updateFavSection();
-document.querySelectorAll('.item').forEach(item => {
-const url = item.querySelector('a').onclick.toString().match(/'([^']+)'/)[1];
-if (favorites.some(f => f.url === url)) {
-item.querySelector('.star').classList.add('active');
-}
-});
-</script>
+            updateProgress() {
+                if (this.video.duration) {
+                    this.progressFill.style.width = (this.video.currentTime / this.video.duration * 100) + '%';
+                    this.currentTimeEl.textContent = this.formatTime(this.video.currentTime);
+                }
+            }
+
+            updateDuration() {
+                this.durationEl.textContent = this.formatTime(this.video.duration);
+            }
+
+            formatTime(s) {
+                if (!s || isNaN(s)) return '0:00';
+                const h = Math.floor(s / 3600);
+                const m = Math.floor((s % 3600) / 60);
+                const sec = Math.floor(s % 60);
+                return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+            }
+
+            seek(e) {
+                if (!this.video.duration) return;
+                const rect = this.progress.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                this.video.currentTime = percent * this.video.duration;
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(e => console.error('FS error:', e));
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            handleKeys(e) {
+                if (this.menu.classList.contains('open')) return;
+                if (e.key === ' ') { e.preventDefault(); this.togglePlay(); }
+                if (e.key.toLowerCase() === 'm') this.toggleMute();
+                if (e.key.toLowerCase() === 'f') this.toggleFullscreen();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => new ExpressPlayer());
+    </script>
 </body>
 </html>
